@@ -1,6 +1,7 @@
 import argparse
 import pickle
 import os
+import sys
 
 
 import numpy as np
@@ -36,6 +37,7 @@ import torchvision.transforms as transforms
 import torchvision.models as models
 from torch.utils.data import Dataset
 
+sys.path.append(os.getcwd())
 from dataset import FlickrDataLoader
 from sampler import ImbalancedDatasetSampler
 from cunet import Conditional_UNet

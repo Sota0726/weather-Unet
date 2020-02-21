@@ -1,6 +1,7 @@
 import argparse
 import pickle
 import os
+import sys
 
 
 import numpy as np
@@ -16,7 +17,7 @@ parser.add_argument('--gpu', type=int)
 parser.add_argument('--image_root', type=str, default='/mnt/fs2/2018/matsuzaki/dataset_fromnitta/Image/')
 parser.add_argument('--pkl_path', type=str, default='/mnt/data2/matsuzaki/repo/data/sepalated_data.pkl')
 parser.add_argument('--output_dir', type=str, default='/mnt/fs2/2018/matsuzaki/results/eval/classifer_val')
-parser.add_argument('--classifer_path', type=str, default='cp/classifier/i2w_res101_val_n/resnet101_95.pt')
+parser.add_argument('--classifer_path', type=str, default='/mnt/fs2/2018/matsuzaki/results/cp/classifier/i2w_res101_val_n/resnet101_95.pt')
 #parser.add_argument('--classifer_path', type=str, default='cp/classifier/res_aug_5_cls/resnet101_95.pt')
 parser.add_argument('--input_size', type=int, default=224)
 parser.add_argument('--batch_size', type=int, default=16)
@@ -34,6 +35,7 @@ import torchvision.transforms as transforms
 import torchvision.models as models
 from torch.utils.data import Dataset
 
+sys.path.append(os.getcwd())
 from dataset import ClassImageLoader
 from sampler import ImbalancedDatasetSampler
 from cunet import Conditional_UNet
