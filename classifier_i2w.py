@@ -2,7 +2,6 @@ import argparse
 import pickle
 import os
 
-import pandas as pd
 import numpy as np
 from tqdm import trange
 
@@ -25,7 +24,6 @@ os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
 
 import torch
 import torch.nn as nn
-import torchvision as tv
 import torchvision.transforms as transforms
 import torchvision.models as models
 
@@ -37,11 +35,13 @@ from sampler import ImbalancedDatasetSampler
 
 os.makedirs(args.save_path, exist_ok=True) 
 
+
 def precision(outputs, labels):
     out = torch.argmax(outputs, dim=1)
     return torch.eq(out, labels).float().mean()
 
-#load data
+
+# load data
 with open(args.pkl_path, 'rb') as f:
     sep_data = pickle.load(f)
 if args.mode == 'V':
@@ -53,10 +53,10 @@ train_transform = transforms.Compose([
     transforms.RandomResizedCrop(args.input_size),
     transforms.RandomHorizontalFlip(),
     transforms.ColorJitter(
-            brightness=0.5,
-            contrast=0.3,
-            saturation=0.3,
-            hue=0  
+                           brightness=0.5,
+                           contrast=0.3,
+                           saturation=0.3,
+                           hue=0 
         ),
     transforms.ToTensor(),
     transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
@@ -93,7 +93,7 @@ num_classes = len(train_set.classes)
 model = models.resnet101(pretrained=False, num_classes=num_classes)
 model.cuda()
 
-#train setting 
+# train setting
 opt = torch.optim.Adam(model.parameters(), lr=args.lr, weight_decay=1e-4)
 criterion = nn.CrossEntropyLoss()
 global_step = 0
@@ -158,7 +158,7 @@ for epoch in tqdm_iter:
             np.mean(prec_li)
             ))
         
-        out_path = os.path.join(args.save_path, 'resnet101_'+str(epoch)+'.pt')
+        out_path = os.path.join(args.save_path, 'resnet101_epoch'+str(epoch)+'_step'+str(global_step)+'.pt')
         torch.save(model, out_path)
 
 print('Done: training')

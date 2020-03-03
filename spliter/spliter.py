@@ -17,7 +17,7 @@ class_dirs = os.listdir(args.root_dir)
 class_dirs.remove('z-other')
 
 dataset_dict = defaultdict(list)
-half = lambda x: (x[:len(x)//2], x[len(x)//2:])
+half = lambda x: (x[:len(x) // 2], x[len(x) // 2:])
 
 for class_dir in class_dirs:
     print(class_dir)
@@ -26,10 +26,10 @@ for class_dir in class_dirs:
     random.shuffle(imgs)
 
     data_tr, data_va = half(imgs[args.N:])
-    dataset_dict['test']+=imgs[:args.N]
-    dataset_dict['train']+=data_tr
-    dataset_dict['val']+=data_va
-    
+    dataset_dict['test'] += imgs[:args.N]
+    dataset_dict['train'] += data_tr
+    dataset_dict['val'] += data_va
+
 print("The split was successful.\n train:val:test = {}:{}:{}".format(len(dataset_dict['train']),
     len(dataset_dict['val']),
     len(dataset_dict['test'])))

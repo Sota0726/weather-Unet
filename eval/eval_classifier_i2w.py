@@ -1,11 +1,10 @@
 import argparse
-import pickle
 import os
 import sys
 
 import numpy as np
 import pandas as pd
-from PIL import Image
+# from PIL import Image
 from tqdm import tqdm
 
 from sklearn.metrics import classification_report, confusion_matrix
@@ -15,14 +14,14 @@ parser = argparse.ArgumentParser()
 parser = argparse.ArgumentParser()
 parser.add_argument('--gpu', type=int, default=1)
 parser.add_argument('--image_root', type=str,
-                    default='/mnt/fs2/2019/takamuro/db/photos_usa_2016/')
+                    default='/mnt/fs2/2018/matsuzaki/dataset_fromnitta/Image/')
 parser.add_argument('--pkl_path', type=str,
-                    default='/mnt/fs2/2019/okada/b4_sys/search_parm_new2/parm_0.3/sepalated_data.pkl')
+                    default='/mnt/fs2/2019/Takamuro/db/i2w/sepalated_data.pkl')
 parser.add_argument('--output_dir', type=str,
-                    default='/mnt/fs2/2019/takamuro/results/c-UNet/eval_classifier_flicker/flicker_param-03_th-1_res101_val_imb')
+                    default='/mnt/fs2/2019/takamuro/results/c-UNet/eval_classifier_i2w/i2w_strict_res101_train')
 # imb mean imbalanced
 parser.add_argument('--classifer_path', type=str,
-                    default='/mnt/data2/takamuro/m2/cUNet-Pytorch/cp/classifier/resnet101_15.pt')
+                    default='/mnt/data2/takamuro/m2/cUNet-Pytorch/cp/classifier/classifier_i2w_strict/better_resnet101_10.pt')
 # parser.add_argument('--classifer_path', type=str, default='cp/classifier/res_aug_5_cls/resnet101_95.pt')
 parser.add_argument('--input_size', type=int, default=224)
 parser.add_argument('--batch_size', type=int, default=16)
@@ -33,17 +32,11 @@ args = parser.parse_args()
 os.environ['CUDA_VISIBLE_DEVICES'] = str(args.gpu)
 
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
-import torchvision as tv
 import torchvision.transforms as transforms
-import torchvision.models as models
-from torch.utils.data import Dataset
 
 sys.path.append(os.getcwd())
 from dataset import ClassImageLoader
 from sampler import ImbalancedDatasetSampler
-from cunet import Conditional_UNet
 
 
 if __name__ == '__main__':
