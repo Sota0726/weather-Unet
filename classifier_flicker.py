@@ -6,6 +6,27 @@ import pandas as pd
 import numpy as np
 from tqdm import trange
 
+parser = argparse.ArgumentParser()
+parser.add_argument('--image_root', type=str,
+                    default='/mnt/fs2/2019/takamuro/db/photos_usa_2016/')
+parser.add_argument('--pkl_path', type=str,
+                    default='/mnt/fs2/2019/okada/'
+                            'b4_sys/search_parm_new2/parm_0.3/'
+                            'sepalated_data.pkl')
+parser.add_argument('--name', type=str, default='noname_classifer')
+parser.add_argument('--save_path', type=str, default='cp/classifier')
+parser.add_argument('--gpu', type=str, default='2')
+parser.add_argument('--input_size', type=int, default=224)
+parser.add_argument('--lr', type=float, default=1e-4)
+parser.add_argument('--num_epoch', type=int, default=100)
+parser.add_argument('--batch_size', type=int, default=16)
+parser.add_argument('--mode', type=str, default='P')
+
+args = parser.parse_args()
+
+os.environ['CUDA_DEVICE_ORDER'] = "PCI_BUS_ID"
+os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
+
 import torch
 import torch.nn as nn
 # import torchvision as tv
@@ -16,23 +37,6 @@ from torch.utils.tensorboard import SummaryWriter
 
 from dataset import FlickrDataLoader
 from sampler import ImbalancedDatasetSampler
-
-parser = argparse.ArgumentParser()
-parser.add_argument('--image_root', type=str,
-                    default='/mnt/fs2/2019/takamuro/db/photos_usa_2016/')
-parser.add_argument('--pkl_path', type=str,
-                    default='/mnt/fs2/2019/okada/'
-                            'b4_sys/search_parm_new2/parm_0.3/'
-                            'sepalated_data.pkl')
-parser.add_argument('--name', type=str, default='noname_classifer')
-parser.add_argument('--save_path', type=str, default='cp/classifier')
-parser.add_argument('--input_size', type=int, default=224)
-parser.add_argument('--lr', type=float, default=1e-4)
-parser.add_argument('--num_epoch', type=int, default=100)
-parser.add_argument('--batch_size', type=int, default=16)
-parser.add_argument('--mode', type=str, default='P')
-
-args = parser.parse_args()
 
 os.makedirs(args.save_path, exist_ok=True)
 
