@@ -25,6 +25,7 @@ def split_flicker(df, ent_th):
 
     return temp
 
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--pickle_path', type=str, default='/mnt/fs2/2019/okada/b4_sys/search_parm_new2/parm_0.3/df_con.pkl')
