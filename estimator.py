@@ -19,10 +19,15 @@ from sampler import ImbalancedDatasetSampler
 from ops import soft_transform, l1_loss
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--image_root', type=str, default='')
-parser.add_argument('--pkl_path', type=str, default='')
+parser.add_argument('--image_root', type=str,
+                    default='/mnt/fs2/2019/takamuro/db/photos_usa_2016/')
+parser.add_argument('--pkl_path', type=str,
+                    default='/mnt/fs2/2019/okada/'
+                            'b4_sys/search_parm_new2/parm_0.3/'
+                            'sepalated_data.pkl')
 parser.add_argument('--save_path', type=str, default='cp/estimator')
 parser.add_argument('--name', type=str, default='noname-estimator')
+parser.add_argument('--gpu', type=str, default='0')
 parser.add_argument('--input_size', type=int, default=224)
 parser.add_argument('--lr', type=float, default=1e-4)
 parser.add_argument('--wd', type=float, default=1e-5)
@@ -32,6 +37,9 @@ parser.add_argument('--num_workers', type=int, default=4)
 parser.add_argument('--mode', type=str, default='P')
 
 args = parser.parse_args()
+
+os.environ['CUDA_DEVICE_ORDER'] = "PCI_BUS_ID"
+os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
 
 comment = '_lr-{}_bs-{}_ne-{}_x{}_name-{}'.format(args.lr,
                                                   args.batch_size,
