@@ -3,23 +3,23 @@ import os
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--image_root', type=str,
-                    # default="/mnt/fs2/2019/Takamuro/db/photos_usa_2016_outdoor"
-                    default='/mnt/fs2/2018/matsuzaki/dataset_fromnitta/Image/'
+                    default="/mnt/fs2/2019/Takamuro/db/photos_usa_2016_outdoor"
+                    # default='/mnt/fs2/2018/matsuzaki/dataset_fromnitta/Image/'
                     )
 parser.add_argument('--name', type=str, default='cUNet')
 # Nmaing rule : cUNet_[c(classifier) or e(estimator)]_[detail of condition]_[epoch]_[step]
 parser.add_argument('--gpu', type=str, default='1')
 parser.add_argument('--save_dir', type=str, default='cp/transfer')
 parser.add_argument('--pkl_path', type=str,
-                    default='/mnt/fs2/2019/Takamuro/db/i2w/sepalated_data.pkl')
+                    default="/mnt/fs2/2018/matsuzaki/results/flickr_data/df_con_train.pkl")
 parser.add_argument('--estimator_path', type=str,
-                    default='/mnt/data2/takamuro/m2/cUNet-Pytorch/cp/classifier/classifier_i2w_strict/better_resnet101_10.pt')
+                    default='/mnt/fs2/2019/Takamuro/m2_research/weather_transfer/cp/classifier_i2w_for_train_strict_sep/better_resnet101_10.pt')
 parser.add_argument('--input_size', type=int, default=224)
 parser.add_argument('--lr', type=float, default=1e-4)
 parser.add_argument('--lmda', type=float, default=None)
 parser.add_argument('--num_epoch', type=int, default=100)
 parser.add_argument('--batch_size', type=int, default=16)
-parser.add_argument('--num_workers', type=int, default=1)
+parser.add_argument('--num_workers', type=int, default=4)
 parser.add_argument('--image_only', action='store_true')
 parser.add_argument('--one_hot', action='store_true')
 args = parser.parse_args()
@@ -92,7 +92,7 @@ class WeatherTransfer(object):
         if not args.one_hot:
             self.cols = ['clouds', 'temp', 'humidity', 'pressure', 'windspeed', 'rain']
         else:
-            self.cols = ['sunny','cloudy', 'rain', 'snow', 'foggy'] 
+            self.cols = ['sunny', 'cloudy', 'rain', 'snow', 'foggy']
         self.num_classes = len(self.cols)
         self.build()
 
@@ -100,16 +100,27 @@ class WeatherTransfer(object):
 
         print('Start loading image files...')
         if image_only:
-            paths = glob(os.path.join(args.image_root, '*'))
-            print('loaded {} data'.format(len(paths)))
+            if args.pkl_path:
+                df = pd.read_pickle(args.pkl_path)
+                print('loaded {} data of pickle'.format(len(df)))
+                pivot = int(len(df) * train_data_rate)
+                df_shuffle = df.sample(frac=1)
+                paths = args.image_root +'/' + df_shuffle['photo'] + '.jpg'
+                paths = paths.to_list()
+                paths_sep = {'train': paths[:pivot], 'test': paths[pivot:]}
+                del df, df_shuffle
+                loader = lambda s: ImageLoader(paths_sep[s], transform=self.transform[s])
 
-            pivot = int(len(paths) * train_data_rate)
-            paths_sep = {'train': paths[:pivot], 'test': paths[pivot:]}
-            loader = lambda s: ImageLoader(paths_sep[s], transform=self.transform[s])
+            else:
+                paths = glob(os.path.join(args.image_root, '*'))
+                print('loaded {} data'.format(len(paths)))
+                pivot = int(len(paths) * train_data_rate)
+                paths_sep = {'train': paths[:pivot], 'test': paths[pivot:]}
+                loader = lambda s: ImageLoader(paths_sep[s], transform=self.transform[s])
 
         elif args.one_hot:
             sep_data = pd.read_pickle(args.pkl_path)
-            loader = lambda s: ClassImageLoader(paths=sep_data[s], transform=self.transform[s]) 
+            loader = lambda s: ClassImageLoader(paths=sep_data[s], transform=self.transform[s])
 
         else:
             df = pd.read_pickle(args.pkl_path)
