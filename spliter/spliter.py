@@ -6,10 +6,10 @@ import random
 from collections import defaultdict
 
 parser = argparse.ArgumentParser()
-parser.add_argument('N', type=int, default=100, help='A number of test data')
+parser.add_argument('--N', type=int, default=100, help='A number of test data')
 parser.add_argument('--root_dir', type=str, default='/mnt/fs2/2018/matsuzaki/dataset_fromnitta/Image/')
 parser.add_argument('--out_path', type=str, default='sepalated_data.pkl')
-
+parser.add_argument('--small_rate', type=float, default=1.0, help='for small data learning, matsuzaki setting is 0.3')
 args = parser.parse_args()
 
 print('Start parsing... Depending on the size of the directory, it may take a long time.')
@@ -24,6 +24,7 @@ for class_dir in class_dirs:
     class_path = os.path.join(args.root_dir, class_dir)
     imgs = glob.glob(os.path.join(class_path, '*.jpg'))
     random.shuffle(imgs)
+    imgs = imgs[:int(len(imgs) * args.small_rate)]
 
     data_tr, data_va = half(imgs[args.N:])
     dataset_dict['test'] += imgs[:args.N]
