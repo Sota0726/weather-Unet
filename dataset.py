@@ -9,30 +9,33 @@ from torch.utils.data import Dataset
 from torchvision.datasets import DatasetFolder
 from torchvision.datasets.folder import default_loader
 
+
 def _collate_fn(batch):
     data = [v[0] for v in batch]
     target = [v[1] for v in batch]
     target = torch.FloatTensor(target)
     return [data, target]
 
+
 def get_class_id_from_string(string):
-    s_li = ['sunny','cloudy', 'rain', 'snow', 'foggy'] 
+    s_li = ['sunny', 'cloudy', 'rain', 'snow', 'foggy']
     if not string in s_li: raise
-    else: return s_li.index(string)
+    else:
+        return s_li.index(string)
 
 
 class FlickrDataLoader(Dataset):
     def __init__(self, image_root, df, columns, transform=None, class_id=None):
         super(FlickrDataLoader, self).__init__()
-        #init
+        # init
         self.root = image_root
         self.columns = columns
         self.photo_id = df['photo'].to_list()
         self.class_id = class_id
         df_ = df.loc[:, columns].fillna(0)
-        self.conditions = (df_ - df_.mean())/df_.std()
+        self.conditions = (df_ - df_.mean()) / df_.std()
         self.labels = df['condition2']
-        #self.cls_li = sorted(self.labels.unique())
+        # self.cls_li = sorted(self.labels.unique())
         self.cls_li = ['Clear', 'Clouds', 'Rain', 'Snow', 'Mist']
         self.num_classes = len(columns)
         self.transform = transform
@@ -54,18 +57,22 @@ class FlickrDataLoader(Dataset):
 
     def __getitem__(self, idx):
         try:
-            image = Image.open(os.path.join(self.root, self.photo_id[idx]+'.jpg'))
+            image = Image.open(os.path.join(self.root, self.photo_id[idx] + '.jpg'))
         except:
             return self.__getitem__(idx)
         image = image.convert('RGB')
         if self.transform:
             image = self.transform(image)
         label = self.get_condition(idx)
-        if self.class_id is not None:
+        if self.class_id:
             cls_id = self.get_class(idx)
             return image, label, cls_id
+        elif not self.class_id:
+            cls_id = self.get_class(idx)
+            return image, cls_id
         else:
             return image, label
+
 
 class ImageLoader(Dataset):
     def __init__(self, paths, transform=None):
@@ -86,20 +93,21 @@ class ImageLoader(Dataset):
             image = self.transform(image)
         return image, True
 
+
 class ClassImageLoader(Dataset):
     def __init__(self, paths, transform=None):
-        #without z-other
+        # without z-other
         paths = [p for p in paths if 'z-other' not in p]
-        #count dirs on root
+        # count dirs on root
         path = os.path.commonpath(paths)
         files = os.listdir(path)
         files_dir = [f for f in files if os.path.isdir(os.path.join(path, f)) if 'z-other' not in f]
-        #init
+        # init
         self.paths = paths
         self.classes = files_dir
         self.num_classes = len(files_dir)
         self.transform = transform
-    
+
     def get_class(self, idx):
         string = self.paths[idx].split('/')[-2]
         return get_class_id_from_string(string)
@@ -115,13 +123,14 @@ class ClassImageLoader(Dataset):
             image = self.transform(image)
         return image, target  # , self.paths[idx]
 
+
 class ImageFolder(DatasetFolder):
     def __init__(self, root, transform=None, loader=default_loader):
         super(ImageFolder, self).__init__(root,
                 transform=transform,
                 extensions='jpg'
             )
-        
+
     def __getitem__(self, ind):
         path, target = self.samples[ind]
         image = Image.open(path)
@@ -129,5 +138,3 @@ class ImageFolder(DatasetFolder):
         if self.transform:
             image = self.transform(image)
         return image, target
-
-
