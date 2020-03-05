@@ -3,7 +3,7 @@ import os
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--image_root', type=str,
-                    default="/mnt/fs2/2019/Takamuro/db/photos_usa_2016_outdoor"
+                    default="/mnt/fs2/2019/Takamuro/db/photos_usa_2016"
                     # default='/mnt/fs2/2018/matsuzaki/dataset_fromnitta/Image/'
                     )
 parser.add_argument('--name', type=str, default='cUNet')
@@ -22,6 +22,7 @@ parser.add_argument('--batch_size', type=int, default=16)
 parser.add_argument('--num_workers', type=int, default=4)
 parser.add_argument('--image_only', action='store_true')
 parser.add_argument('--one_hot', action='store_true')
+parser.add_argument('--w_classifier', action='store_true')
 args = parser.parse_args()
 
 # GPU Setting
@@ -87,36 +88,41 @@ class WeatherTransfer(object):
             transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
         ])
 
-        self.transform = {'train': train_transform, 'test': test_transform}
-        self.train_set, self.test_set = self.load_data(varbose=True, image_only=args.image_only)
         if not args.one_hot:
             self.cols = ['clouds', 'temp', 'humidity', 'pressure', 'windspeed', 'rain']
+            self.num_classes = len(self.cols)
+
+        elif args.w_classifier:
+            self.cols = ['clouds', 'temp', 'humidity', 'pressure', 'windspeed', 'rain']
+            self.num_classes = len(['sunny', 'cloudy', 'rain', 'snow', 'foggy'])
+
         else:
             self.cols = ['sunny', 'cloudy', 'rain', 'snow', 'foggy']
-        self.num_classes = len(self.cols)
+            self.num_classes = len(self.cols)
+
+        self.transform = {'train': train_transform, 'test': test_transform}
+        self.train_set, self.test_set = self.load_data(varbose=True, image_only=args.image_only)
+
         self.build()
 
     def load_data(self, varbose=False, image_only=False, train_data_rate=0.7):
 
         print('Start loading image files...')
-        if image_only:
-            if args.pkl_path:
-                df = pd.read_pickle(args.pkl_path)
-                print('loaded {} data of pickle'.format(len(df)))
-                pivot = int(len(df) * train_data_rate)
-                df_shuffle = df.sample(frac=1)
-                paths = args.image_root +'/' + df_shuffle['photo'] + '.jpg'
-                paths = paths.to_list()
-                paths_sep = {'train': paths[:pivot], 'test': paths[pivot:]}
-                del df, df_shuffle
-                loader = lambda s: ImageLoader(paths_sep[s], transform=self.transform[s])
+        if args.w_classifier:
+            df = pd.read_pickle(args.pkl_path)
+            print('loaded {} data'.format(len(df)))
+            pivot = int(len(df) * train_data_rate)
+            df_shuffle = df.sample(frac=1)
+            df_sep = {'train': df_shuffle[:pivot], 'test': df_shuffle[pivot:]}
+            del df, df_shuffle
+            loader = lambda s: FlickrDataLoader(args.image_root, df_sep[s], self.cols, transform=self.transform[s], class_id=False)
 
-            else:
-                paths = glob(os.path.join(args.image_root, '*'))
-                print('loaded {} data'.format(len(paths)))
-                pivot = int(len(paths) * train_data_rate)
-                paths_sep = {'train': paths[:pivot], 'test': paths[pivot:]}
-                loader = lambda s: ImageLoader(paths_sep[s], transform=self.transform[s])
+        elif image_only:
+            paths = glob(os.path.join(args.image_root, '*'))
+            print('loaded {} data'.format(len(paths)))
+            pivot = int(len(paths) * train_data_rate)
+            paths_sep = {'train': paths[:pivot], 'test': paths[pivot:]}
+            loader = lambda s: ImageLoader(paths_sep[s], transform=self.transform[s])
 
         elif args.one_hot:
             sep_data = pd.read_pickle(args.pkl_path)
@@ -356,7 +362,6 @@ class WeatherTransfer(object):
                 else:
                     self.lmda = self.global_step / self.all_step
 
-                # Inputs
                 images, _ = (d.to('cuda') for d in data)
                 rand_images, _ = (d.to('cuda') for d in rand_data)
                 rand_labels = self.estimator(rand_images).detach()

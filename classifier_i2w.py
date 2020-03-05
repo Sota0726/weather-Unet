@@ -7,7 +7,7 @@ from tqdm import trange
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--image_root', type=str, default='/mnt/fs2/2018/matsuzaki/dataset_fromnitta/Image/')
-parser.add_argument('--pkl_path', type=str, default='./sepalated_data.pkl')
+parser.add_argument('--pkl_path', type=str, default='/mnt/fs2/2019/Takamuro/db/i2w/sepalated_data.pkl')
 parser.add_argument('--name', type=str, default='i2w_classifier')
 parser.add_argument('--save_path', type=str, default='cp/classifier_i2w')
 parser.add_argument('--gpu', type=str, default='2')
@@ -16,6 +16,7 @@ parser.add_argument('--lr', type=float, default=1e-4)
 parser.add_argument('--num_epoch', type=int, default=100)
 parser.add_argument('--batch_size', type=int, default=16)
 parser.add_argument('--mode', type=str, default='T')
+parser.add_argument('--pre_trained', action='store_true')
 
 args = parser.parse_args()
 
@@ -33,7 +34,7 @@ from dataset import ClassImageLoader
 from sampler import ImbalancedDatasetSampler
 
 
-os.makedirs(args.save_path, exist_ok=True) 
+os.makedirs(args.save_path, exist_ok=True)
 
 
 def precision(outputs, labels):
@@ -56,7 +57,7 @@ train_transform = transforms.Compose([
                            brightness=0.5,
                            contrast=0.3,
                            saturation=0.3,
-                           hue=0 
+                           hue=0
         ),
     transforms.ToTensor(),
     transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
@@ -68,7 +69,7 @@ test_transform = transforms.Compose([
 ])
 transform = {'train': train_transform, 'test': test_transform}
 
-loader = lambda s: ClassImageLoader(paths=sep_data[s], transform=transform[s]) 
+loader = lambda s: ClassImageLoader(paths=sep_data[s], transform=transform[s])
 
 train_set = loader('train')
 test_set = loader('test')
@@ -90,7 +91,15 @@ test_loader = torch.utils.data.DataLoader(
 num_classes = len(train_set.classes)
 
 # modify exist resnet101 model
-model = models.resnet101(pretrained=False, num_classes=num_classes)
+if not args.pre_trained:
+    model = models.resnet101(pretrained=False, num_classes=num_classes)
+else:
+    model = models.resnet101(pretrained=True)
+    for param in model.parameters():
+        param.requires_grad = False
+    num_features = model.fc.in_features
+    model.fc = nn.Linear(num_features, num_classes)
+
 model.cuda()
 
 # train setting
@@ -157,7 +166,7 @@ for epoch in tqdm_iter:
             np.mean(loss_li),
             np.mean(prec_li)
             ))
-        
+
         out_path = os.path.join(args.save_path, 'resnet101_epoch'+str(epoch)+'_step'+str(global_step)+'.pt')
         torch.save(model, out_path)
 
