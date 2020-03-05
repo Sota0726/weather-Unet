@@ -7,7 +7,7 @@ from tqdm import trange
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--image_root', type=str, default='/mnt/fs2/2018/matsuzaki/dataset_fromnitta/Image/')
-parser.add_argument('--pkl_path', type=str, default='./sepalated_data.pkl')
+parser.add_argument('--pkl_path', type=str, default='/mnt/fs2/2019/Takamuro/db/i2w/sepalated_data.pkl')
 parser.add_argument('--name', type=str, default='i2w_classifier')
 parser.add_argument('--save_path', type=str, default='cp/classifier_i2w')
 parser.add_argument('--gpu', type=str, default='2')
