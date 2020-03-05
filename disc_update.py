@@ -34,5 +34,5 @@ class SNDisc(nn.Module):
         e_c = self.embed(c)
         if c is not None:
             out += torch.sum(e_c * x, dim=1, keepdim=True)
-        # out = nn.Sigmoid(out)
+        out = nn.Sigmoid(out)
         return [out, c1, c2, c3, c4]
