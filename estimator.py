@@ -6,18 +6,6 @@ import pandas as pd
 import numpy as np
 from tqdm import trange
 
-import torch
-import torch.nn as nn
-import torchvision as tv
-import torchvision.transforms as transforms
-import torchvision.models as models
-
-from torch.utils.tensorboard import SummaryWriter
-
-from dataset import FlickrDataLoader
-from sampler import ImbalancedDatasetSampler
-from ops import soft_transform, l1_loss
-
 parser = argparse.ArgumentParser()
 parser.add_argument('--image_root', type=str,
                     default='/mnt/fs2/2019/takamuro/db/photos_usa_2016/')
@@ -38,6 +26,20 @@ args = parser.parse_args()
 
 os.environ['CUDA_DEVICE_ORDER'] = "PCI_BUS_ID"
 os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
+
+import torch
+import torch.nn as nn
+import torchvision as tv
+import torchvision.transforms as transforms
+import torchvision.models as models
+
+from torch.utils.tensorboard import SummaryWriter
+
+from dataset import FlickrDataLoader
+from sampler import ImbalancedDatasetSampler
+from ops import soft_transform, l1_loss
+
+
 
 comment = '_lr-{}_bs-{}_ne-{}_x{}_name-{}'.format(args.lr,
                                                   args.batch_size,
