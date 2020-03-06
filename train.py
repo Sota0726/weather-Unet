@@ -24,7 +24,7 @@ parser.add_argument('--num_workers', type=int, default=4)
 parser.add_argument('--image_only', action='store_true')
 parser.add_argument('--one_hot', action='store_true')
 parser.add_argument('--w_clas_d_fli', action='store_true')
-parser.add_argument('--GD_train_ratio', type=int, default=5)
+parser.add_argument('--GD_train_ratio', type=int, default=1)
 args = parser.parse_args()
 
 # GPU Setting
@@ -302,7 +302,7 @@ class WeatherTransfer(object):
                 fake_out_ = self.inference(images, ref_labels_expand)
                 fake_c_out_ = self.estimator(fake_out_)
                 # fake_d_out_ = self.discriminator(fake_out_, labels)[0]  # Dへの入力はfake_out_ と re_labels_expandではないのか？
-                real_d_out_ = self.discriminator(images, labels)
+                real_d_out_ = self.discriminator(images, labels)[0]
                 fake_d_out_ = self.discriminator(fake_out_, ref_labels_expand)[0]
 
 
@@ -310,7 +310,7 @@ class WeatherTransfer(object):
             g_loss_adv_.append(adv_loss(fake_d_out_, self.real).item())
             g_loss_l1_.append(l1_loss(fake_out_, images).item())
             g_loss_w_.append(pred_loss(fake_c_out_, ref_labels_expand).item())
-            d_loss_.append(dis_hinge(fake_d_out_, real_d_out_))
+            d_loss_.append(dis_hinge(fake_d_out_, real_d_out_).item())
 
         # --- WRITING SUMMARY ---#
         self.scalar_dict.update({
