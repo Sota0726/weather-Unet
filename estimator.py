@@ -22,9 +22,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--image_root', type=str,
                     default='/mnt/fs2/2019/takamuro/db/photos_usa_2016/')
 parser.add_argument('--pkl_path', type=str,
-                    default='/mnt/fs2/2019/okada/'
-                            'b4_sys/search_parm_new2/parm_0.3/'
-                            'sepalated_data.pkl')
+                    default='/mnt/fs2/2019/okada/from_nitta/parm_0.3/sepalated_data.pkl')
 parser.add_argument('--save_path', type=str, default='cp/estimator')
 parser.add_argument('--name', type=str, default='noname-estimator')
 parser.add_argument('--gpu', type=str, default='0')
