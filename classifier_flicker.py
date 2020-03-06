@@ -18,7 +18,7 @@ parser.add_argument('--input_size', type=int, default=224)
 parser.add_argument('--lr', type=float, default=1e-4)
 parser.add_argument('--num_epoch', type=int, default=100)
 parser.add_argument('--batch_size', type=int, default=16)
-parser.add_argument('--mode', type=str, default='P')
+parser.add_argument('--mode', type=str, default='T', help='T(Train data) or E(Evaluate data)')
 parser.add_argument('--pre_trained', action='store_true')
 args = parser.parse_args()
 
@@ -69,12 +69,12 @@ test_transform = transforms.Compose([
 ])
 transform = {'train': train_transform, 'test': test_transform}
 
-if args.mode == 'P':
+if args.mode == 'T':
     df_sep = {'train': df[df['mode'] == 'train'],
               'test': df[df['mode'] == 'test']}
 elif args.mode == 'E':  # for evaluation
-    df_sep = {'train': df[df['mode'] == 'test'],
-              'test': df[df['mode'] == 'train']}
+    df_sep = {'train': df[df['mode'] == 'val'],
+              'test': df[df['mode'] == 'test']}
 else:
     raise NotImplementedError
 
