@@ -64,15 +64,15 @@ class FlickrDataLoader(Dataset):
         if self.transform:
             image = self.transform(image)
         label = self.get_condition(idx)
-        if self.class_id:
+
+        if self.class_id is None:
+            return image, label
+        elif self.class_id:
             cls_id = self.get_class(idx)
             return image, label, cls_id
-        elif not self.class_id:
+        else:
             cls_id = self.get_class(idx)
             return image, cls_id
-        else:
-            return image, label
-
 
 class ImageLoader(Dataset):
     def __init__(self, paths, transform=None):
