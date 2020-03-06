@@ -3,15 +3,16 @@ import os
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--image_root', type=str,
-                    default="/mnt/fs2/2019/Takamuro/db/photos_usa_2016"
-                    # default='/mnt/fs2/2018/matsuzaki/dataset_fromnitta/Image/'
+                    # default="/mnt/fs2/2019/Takamuro/db/photos_usa_2016"
+                    default='/mnt/fs2/2018/matsuzaki/dataset_fromnitta/Image/'
                     )
 parser.add_argument('--name', type=str, default='cUNet')
 # Nmaing rule : cUNet_[c(classifier) or e(estimator)]_[detail of condition]_[epoch]_[step]
 parser.add_argument('--gpu', type=str, default='1')
 parser.add_argument('--save_dir', type=str, default='cp/transfer')
 parser.add_argument('--pkl_path', type=str,
-                    default="/mnt/fs2/2018/matsuzaki/results/flickr_data/df_con_train.pkl")
+                    # default="/mnt/fs2/2018/matsuzaki/results/flickr_data/df_con_train.pkl")
+                    default='/mnt/fs2/2019/Takamuro/db/i2w/sepalated_data.pkl')
 parser.add_argument('--estimator_path', type=str,
                     default='/mnt/fs2/2019/Takamuro/m2_research/weather_transfer/cp/classifier_i2w_for_train_strict_sep/better_resnet101_10.pt')
 parser.add_argument('--input_size', type=int, default=224)
@@ -178,6 +179,7 @@ class WeatherTransfer(object):
         self.g_opt = torch.optim.Adam(self.inference.parameters(), lr=args.lr, betas=(0.0, 0.999), weight_decay=args.lr/20)
         self.d_opt = torch.optim.Adam(self.discriminator.parameters(), lr=args.lr, betas=(0.0, 0.999), weight_decay=args.lr/20)
 
+        # これらのloaderにsamplerは必要ないのか？
         self.train_loader = torch.utils.data.DataLoader(
                 self.train_set,
                 batch_size=args.batch_size,
@@ -273,7 +275,7 @@ class WeatherTransfer(object):
         self.d_opt.step()
 
         self.scalar_dict.update({
-            'losses/d_loss': d_loss.item()
+            'losses/d_loss/train': d_loss.item()
             })
 
     def evaluation(self):
@@ -281,6 +283,7 @@ class WeatherTransfer(object):
         g_loss_adv_ = []
         g_loss_w_ = []
         fake_out_li = []
+        d_loss_ = []
         images, labels = self.test_random_sample[0]
         blank = torch.zeros_like(images[0]).unsqueeze(0)
         ref_images, ref_labels = self.test_random_sample[1]
@@ -293,21 +296,26 @@ class WeatherTransfer(object):
             with torch.no_grad():
                 if ref_labels is None:
                     ref_labels = self.estimator(ref_images)
-                ref_labels_expand = torch.cat([ref_labels[i]]*self.batch_size).view(-1, self.num_classes)
+                ref_labels_expand = torch.cat([ref_labels[i]] * self.batch_size).view(-1, self.num_classes)
                 fake_out_ = self.inference(images, ref_labels_expand)
                 fake_c_out_ = self.estimator(fake_out_)
-                fake_d_out_ = self.discriminator(fake_out_, labels)[0]
+                # fake_d_out_ = self.discriminator(fake_out_, labels)[0]  # Dへの入力はfake_out_ と re_labels_expandではないのか？
+                real_d_out_ = self.discriminator(images, labels)
+                fake_d_out_ = self.discriminator(fake_out_, ref_labels_expand)[0]
+
 
             fake_out_li.append(fake_out_)
             g_loss_adv_.append(adv_loss(fake_d_out_, self.real).item())
             g_loss_l1_.append(l1_loss(fake_out_, images).item())
             g_loss_w_.append(pred_loss(fake_c_out_, ref_labels_expand).item())
+            d_loss_.append(dis_hinge(fake_d_out_, real_d_out_))
 
         # --- WRITING SUMMARY ---#
         self.scalar_dict.update({
                 'losses/g_loss_adv/test': np.mean(g_loss_adv_),
                 'losses/g_loss_l1/test': np.mean(g_loss_l1_),
                 'losses/g_loss_w/test': np.mean(g_loss_w_),
+                'losses/d_loss/test': np.mean(d_loss_)
                 })
         ref_img = torch.cat([blank] + list(torch.split(ref_images, 1)), dim=3)
         in_out_img = torch.cat([images] + fake_out_li, dim=3)
@@ -367,9 +375,10 @@ class WeatherTransfer(object):
                 rand_labels = self.estimator(rand_images).detach()
                 if images.size(0) != self.batch_size:
                     continue
-
+                
                 self.update_discriminator(images, rand_labels)
-                self.update_inference(images, rand_labels)
+                if self.global_step % 5 == 0:
+                    self.update_inference(images, rand_labels)
 
                 # --- EVALUATION ---#
                 if (self.global_step % eval_per_step == 0) and not args.image_only:
