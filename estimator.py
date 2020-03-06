@@ -1,5 +1,5 @@
 import argparse
-# import pickle
+import pickle
 import os
 
 import pandas as pd
@@ -8,13 +8,13 @@ from tqdm import trange
 
 import torch
 import torch.nn as nn
-# import torchvision as tv
+import torchvision as tv
 import torchvision.transforms as transforms
 import torchvision.models as models
 
 from torch.utils.tensorboard import SummaryWriter
 
-from dataset import ImageLoader, FlickrDataLoader
+from dataset import FlickrDataLoader
 from sampler import ImbalancedDatasetSampler
 from ops import soft_transform, l1_loss
 
@@ -48,6 +48,9 @@ comment = '_lr-{}_bs-{}_ne-{}_x{}_name-{}'.format(args.lr,
                                                   args.name)
 writer = SummaryWriter(comment=comment)
 
+save_dir = os.path.join(args.save_path, args.name)
+os.makedirs(save_dir, exist_ok=True)
+
 # load data
 df = pd.read_pickle(args.pkl_path)
 print('{} data were loaded'.format(len(df)))
@@ -74,8 +77,8 @@ test_transform = transforms.Compose([
 
 transform = {'train': train_transform, 'test': test_transform}
 
-train_data_rate = 0.5
-pivot = int(len(df) * train_data_rate)
+# train_data_rate = 0.5
+# pivot = int(len(df) * train_data_rate)
 
 # if args.mode == 'P':
 #     df_sep = {'train': df[:pivot], 'test': df[pivot:]}
@@ -176,8 +179,8 @@ for epoch in tqdm_iter:
         global_step += 1
 
     if epoch % save_per_epoch == 0:
-        out_path = os.path.join(args.save_path, 'resnet50_'+str(epoch)+'.pt')
-        os.makedirs(args.save_path, exist_ok=True)
+        out_path = os.path.join(save_dir, 'resnet50_'+str(epoch)+'_step'+str(global_step)+'.pt')
+
         torch.save(model, out_path)
 
     tqdm_iter.set_description('{} iter: Train loss={:.5f} Test loss={:.5f}'

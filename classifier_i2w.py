@@ -33,8 +33,8 @@ from torch.utils.tensorboard import SummaryWriter
 from dataset import ClassImageLoader
 from sampler import ImbalancedDatasetSampler
 
-
-os.makedirs(args.save_path, exist_ok=True)
+save_dir = os.path.join(args.save_path, args.name)
+os.makedirs(save_dir, exist_ok=True)
 
 
 def precision(outputs, labels):
@@ -167,7 +167,7 @@ for epoch in tqdm_iter:
             np.mean(prec_li)
             ))
 
-        out_path = os.path.join(args.save_path, 'resnet101_epoch'+str(epoch)+'_step'+str(global_step)+'.pt')
+        out_path = os.path.join(save_dir, 'resnet101_epoch'+str(epoch)+'_step'+str(global_step)+'.pt')
         torch.save(model, out_path)
 
 print('Done: training')
