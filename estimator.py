@@ -74,8 +74,8 @@ test_transform = transforms.Compose([
 
 transform = {'train': train_transform, 'test': test_transform}
 
-train_data_rate = 0.5
-pivot = int(len(df) * train_data_rate)
+# train_data_rate = 0.5
+# pivot = int(len(df) * train_data_rate)
 
 # if args.mode == 'P':
 #     df_sep = {'train': df[:pivot], 'test': df[pivot:]}

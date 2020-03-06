@@ -166,7 +166,7 @@ for epoch in tqdm_iter:
             np.mean(prec_li)
             ))
 
-        out_path = os.path.join(args.save_path, 'resnet101_epoch'+str(epoch)+'_step'+str(global_step)+'.pt')
+        out_path = os.path.join(args.save_path, 'vgg16_epoch'+str(epoch)+'_step'+str(global_step)+'.pt')
         torch.save(model, out_path)
 
 print('Done: training')

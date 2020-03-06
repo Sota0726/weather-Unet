@@ -48,6 +48,7 @@ from ops import *
 from dataset import ImageLoader, FlickrDataLoader, ClassImageLoader
 from cunet import Conditional_UNet
 from disc import SNDisc
+# from disc_update import SNDisc
 from utils import MakeOneHot
 
 
@@ -296,7 +297,7 @@ class WeatherTransfer(object):
                 ref_labels_expand = torch.cat([ref_labels[i]]*self.batch_size).view(-1, self.num_classes)
                 fake_out_ = self.inference(images, ref_labels_expand)
                 fake_c_out_ = self.estimator(fake_out_)
-                fake_d_out_ = self.discriminator(fake_out_, labels)[0]
+                fake_d_out_ = self.discriminator(fake_out_, labels)[0]  # Dへの入力はfake_out_ と re_labels_expandではないのか？
 
             fake_out_li.append(fake_out_)
             g_loss_adv_.append(adv_loss(fake_d_out_, self.real).item())
