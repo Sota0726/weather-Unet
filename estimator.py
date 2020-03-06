@@ -32,7 +32,7 @@ parser.add_argument('--wd', type=float, default=1e-5)
 parser.add_argument('--num_epoch', type=int, default=100)
 parser.add_argument('--batch_size', type=int, default=64)
 parser.add_argument('--num_workers', type=int, default=4)
-parser.add_argument('--mode', type=str, default='P')
+parser.add_argument('--mode', type=str, default='T', help='T(Train data) or E(Evaluate data)')
 
 args = parser.parse_args()
 
@@ -85,12 +85,12 @@ transform = {'train': train_transform, 'test': test_transform}
 # else:
 #     raise NotImplementedError
 
-if args.mode == 'P':
+if args.mode == 'T':
     df_sep = {'train': df[df['mode'] == 'train'],
               'test': df[df['mode'] == 'test']}
 elif args.mode == 'E':  # for evaluation
-    df_sep = {'train': df[df['mode'] == 'test'],
-              'test': df[df['mode'] == 'train']}
+    df_sep = {'train': df[df['mode'] == 'val'],
+              'test': df[df['mode'] == 'test']}
 else:
     raise NotImplementedError
 
@@ -177,7 +177,7 @@ for epoch in tqdm_iter:
         global_step += 1
 
     if epoch % save_per_epoch == 0:
-        out_path = os.path.join(save_dir, 'resnet50_'+str(epoch)+'_step'+str(global_step)+'.pt')
+        out_path = os.path.join(save_dir, 'est_resnet101_'+str(epoch)+'_step'+str(global_step)+'.pt')
 
         torch.save(model, out_path)
 
