@@ -23,7 +23,7 @@ parser.add_argument('--batch_size', type=int, default=16)
 parser.add_argument('--num_workers', type=int, default=4)
 parser.add_argument('--image_only', action='store_true')
 parser.add_argument('--one_hot', action='store_true')
-parser.add_argument('--w_classifier', action='store_true')
+parser.add_argument('--w_clas_d_fli', action='store_true')
 args = parser.parse_args()
 
 # GPU Setting
@@ -94,7 +94,7 @@ class WeatherTransfer(object):
             self.cols = ['clouds', 'temp', 'humidity', 'pressure', 'windspeed', 'rain']
             self.num_classes = len(self.cols)
 
-        elif args.w_classifier:
+        elif args.w_clas_d_fli:
             self.cols = ['clouds', 'temp', 'humidity', 'pressure', 'windspeed', 'rain']
             self.num_classes = len(['sunny', 'cloudy', 'rain', 'snow', 'foggy'])
 
@@ -110,7 +110,7 @@ class WeatherTransfer(object):
     def load_data(self, varbose=False, image_only=False, train_data_rate=0.7):
 
         print('Start loading image files...')
-        if args.w_classifier:
+        if args.w_clas_d_fli:
             df = pd.read_pickle(args.pkl_path)
             print('loaded {} data'.format(len(df)))
             pivot = int(len(df) * train_data_rate)
