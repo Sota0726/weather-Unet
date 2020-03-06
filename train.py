@@ -24,6 +24,7 @@ parser.add_argument('--num_workers', type=int, default=4)
 parser.add_argument('--image_only', action='store_true')
 parser.add_argument('--one_hot', action='store_true')
 parser.add_argument('--w_clas_d_fli', action='store_true')
+parser.add_argument('--GD_train_ratio', type=int, default=5)
 args = parser.parse_args()
 
 # GPU Setting
@@ -376,9 +377,9 @@ class WeatherTransfer(object):
                 rand_labels = self.estimator(rand_images).detach()
                 if images.size(0) != self.batch_size:
                     continue
-                
+
                 self.update_discriminator(images, rand_labels)
-                if self.global_step % 5 == 0:
+                if self.global_step % args.GD_train_ratio == 0:
                     self.update_inference(images, rand_labels)
 
                 # --- EVALUATION ---#
