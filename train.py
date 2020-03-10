@@ -170,7 +170,7 @@ class WeatherTransfer(object):
         if args.one_hot:
             self.estimator = nn.Sequential(
                         self.estimator,
-                        nn.Softmax(dim=0)
+                        nn.Softmax(dim=1)
                     )
         self.estimator.eval()
 
@@ -271,8 +271,8 @@ class WeatherTransfer(object):
         fake_out = self.inference(images, labels)
         fake_d_out = self.discriminator(fake_out.detach(), labels)[0]
 
-        # update
         d_loss = dis_hinge(fake_d_out, real_d_out_pred)
+
         d_loss.backward()
         self.d_opt.step()
 
