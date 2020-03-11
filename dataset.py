@@ -25,7 +25,7 @@ def get_class_id_from_string(string):
 
 
 class FlickrDataLoader(Dataset):
-    def __init__(self, image_root, df, columns, transform=None, class_id=None):
+    def __init__(self, image_root, df, columns, transform=None, class_id=None, imbalance=None):
         super(FlickrDataLoader, self).__init__()
         # init
         self.root = image_root
@@ -34,7 +34,10 @@ class FlickrDataLoader(Dataset):
         self.class_id = class_id
         df_ = df.loc[:, columns].fillna(0)
         self.conditions = (df_ - df_.mean()) / df_.std()
-        self.labels = df['condition2']
+        if imbalance:
+            self.labels = df['w_condition']
+        else:
+            self.labels = df['condition2']
         # self.cls_li = sorted(self.labels.unique())
         self.cls_li = ['Clear', 'Clouds', 'Rain', 'Snow', 'Mist']
         self.num_classes = len(columns)
@@ -72,7 +75,7 @@ class FlickrDataLoader(Dataset):
             return image, label, cls_id
         else:
             cls_id = self.get_class(idx)
-            return image, cls_id
+            return image, cls_id, idx
 
 class ImageLoader(Dataset):
     def __init__(self, paths, transform=None):

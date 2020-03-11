@@ -11,14 +11,17 @@ from sklearn.metrics import classification_report, confusion_matrix
 import seaborn as sns
 
 parser = argparse.ArgumentParser()
-parser = argparse.ArgumentParser()
 parser.add_argument('--gpu', type=int, default=1)
 parser.add_argument('--image_root', type=str,
                     default='/mnt/fs2/2018/matsuzaki/dataset_fromnitta/Image/')
 parser.add_argument('--pkl_path', type=str,
                     default='/mnt/fs2/2019/Takamuro/db/i2w/sepalated_data.pkl')
 parser.add_argument('--output_dir', type=str,
-                    default='/mnt/fs2/2019/takamuro/m2_research/weather_transfer/results/eval_classifier_i2w/i2w_strict_sep_res101_val')
+<<<<<<< HEAD
+                    default='/mnt/fs2/2019/takamuro/m2_research/weather_transfer/results/eval_classifier_i2w/i2w_strict_sep_res101_val_e20')
+=======
+                    default='/mnt/fs2/2019/takamuro/m2_research/weather_transfer/results/eval_classifier_i2w/i2w_strict_sep_res101_val_e20')
+>>>>>>> 0a47934455a43cf85ac80df1d40b84f76cd25cd7
 # imb mean imbalanced
 parser.add_argument('--classifer_path', type=str,
                     default='/mnt/fs2/2019/Takamuro/m2_research/weather_transfer/cp/classifier_i2w_for_val_strict_sep/resnet101_epoch15_step59312.pt')
@@ -33,6 +36,7 @@ os.environ['CUDA_VISIBLE_DEVICES'] = str(args.gpu)
 
 import torch
 import torchvision.transforms as transforms
+import torch.nn as nn
 
 sys.path.append(os.getcwd())
 from dataset import ClassImageLoader
@@ -62,6 +66,10 @@ if __name__ == '__main__':
 
     # load model
     classifer = torch.load(args.classifer_path)
+    classifer = nn.Sequential(
+                        classifer,
+                        nn.Softmax(dim=1)
+                    )
     classifer.eval()
 
     if args.gpu > 0:
@@ -74,7 +82,9 @@ if __name__ == '__main__':
     for i, data in tqdm(enumerate(loader)):
         batch = data[0].to('cuda')
         c_batch = data[1].to('cuda')
+        print(classifer(batch).detach())
         pred = torch.argmax(classifer(batch).detach(), 1)
+
         res_li.append(torch.cat([pred.int().cpu().view(bs, -1),
                                 c_batch.int().cpu().view(bs, -1)], 1))
     all_res = torch.cat(res_li, 0).numpy()
