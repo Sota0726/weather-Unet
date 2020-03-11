@@ -25,6 +25,7 @@ parser.add_argument('--image_only', action='store_true')
 parser.add_argument('--one_hot', action='store_true')
 parser.add_argument('--w_clas_d_fli', action='store_true')
 parser.add_argument('--GD_train_ratio', type=int, default=1)
+parser.add_argument('--sampler', action='store_true')
 args = parser.parse_args()
 
 # GPU Setting
@@ -48,6 +49,7 @@ from torchvision.utils import save_image, make_grid
 
 from ops import *
 from dataset import ImageLoader, FlickrDataLoader, ClassImageLoader
+from sampler import ImbalancedDatasetSampler
 from cunet import Conditional_UNet
 from disc import SNDisc
 # from disc_update import SNDisc
@@ -189,12 +191,20 @@ class WeatherTransfer(object):
                 drop_last=True,
                 num_workers=args.num_workers)
 
-        self.random_loader = torch.utils.data.DataLoader(
+        if args.sampler:
+            self.random_loader = torch.utils.data.DataLoader(
                 self.train_set,
                 batch_size=args.batch_size,
-                shuffle=True,
+                sampler=ImbalancedDatasetSampler(self.train_set),
                 drop_last=True,
                 num_workers=args.num_workers)
+        else:
+            self.random_loader = torch.utils.data.DataLoader(
+                    self.train_set,
+                    batch_size=args.batch_size,
+                    shuffle=True,
+                    drop_last=True,
+                    num_workers=args.num_workers)
 
         if not args.image_only:
             self.test_loader = torch.utils.data.DataLoader(
