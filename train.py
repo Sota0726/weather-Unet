@@ -120,7 +120,7 @@ class WeatherTransfer(object):
             df_shuffle = df.sample(frac=1)
             df_sep = {'train': df_shuffle[:pivot], 'test': df_shuffle[pivot:]}
             del df, df_shuffle
-            loader = lambda s: FlickrDataLoader(args.image_root, df_sep[s], self.cols, transform=self.transform[s], class_id=False)
+            loader = lambda s: FlickrDataLoader(args.image_root, df_sep[s], self.cols, transform=self.transform[s], class_id=False, imbalance=args.sampler)
 
         elif image_only:
             paths = glob(os.path.join(args.image_root, '*'))
