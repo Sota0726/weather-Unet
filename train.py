@@ -3,16 +3,17 @@ import os
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--image_root', type=str,
-                    # default="/mnt/fs2/2019/Takamuro/db/photos_usa_2016"
-                    default='/mnt/fs2/2018/matsuzaki/dataset_fromnitta/Image/'
+                    default="/mnt/fs2/2019/Takamuro/db/photos_usa_2016"
+                    # default='/mnt/fs2/2018/matsuzaki/dataset_fromnitta/Image/'
                     )
 parser.add_argument('--name', type=str, default='cUNet')
 # Nmaing rule : cUNet_[c(classifier) or e(estimator)]_[detail of condition]_[epoch]_[step]
 parser.add_argument('--gpu', type=str, default='1')
 parser.add_argument('--save_dir', type=str, default='cp/transfer')
 parser.add_argument('--pkl_path', type=str,
-                    # default="/mnt/fs2/2018/matsuzaki/results/flickr_data/df_con_train.pkl")
-                    default='/mnt/fs2/2019/Takamuro/db/i2w/sepalated_data.pkl')
+                    default='/mnt/fs2/2019/okada/from_nitta/parm_0.3/sepalated_data.pkl'
+                    # default='/mnt/fs2/2019/Takamuro/db/i2w/sepalated_data.pkl'
+                    )
 parser.add_argument('--estimator_path', type=str,
                     default='/mnt/fs2/2019/Takamuro/m2_research/weather_transfer/cp/classifier_i2w_for_train_strict_sep/better_resnet101_10.pt')
 parser.add_argument('--input_size', type=int, default=224)
