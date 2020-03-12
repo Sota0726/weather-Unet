@@ -11,9 +11,14 @@ parser.add_argument('--name', type=str, default='cUNet')
 parser.add_argument('--gpu', type=str, default='1')
 parser.add_argument('--save_dir', type=str, default='cp/transfer')
 parser.add_argument('--pkl_path', type=str,
-                    default='/mnt/fs2/2019/okada/from_nitta/parm_0.3/sep_with_est-label.pkl'
-                    # default='/mnt/fs2/2019/Takamuro/db/i2w/sepalated_data.pkl'
+<<<<<<< HEAD
+                    # default='/mnt/fs2/2019/okada/from_nitta/parm_0.3/sep_with_est-label.pkl'
+                    default='/mnt/fs2/2019/Takamuro/db/i2w/sepalated_data.pkl')
                     )
+=======
+                    # default='/mnt/fs2/2019/okada/from_nitta/parm_0.3/sep_with_est-label.pkl'
+                    default='/mnt/fs2/2019/Takamuro/db/i2w/sepalated_data.pkl')
+>>>>>>> 767af391fef747f84726e753ba5af2273a68cdbd
 parser.add_argument('--estimator_path', type=str,
                     default='/mnt/fs2/2019/Takamuro/m2_research/weather_transfer/cp/classifier_i2w_for_train_strict_sep/better_resnet101_10.pt')
 parser.add_argument('--input_size', type=int, default=224)
@@ -27,6 +32,7 @@ parser.add_argument('--one_hot', action='store_true')
 parser.add_argument('--w_clas_d_fli', action='store_true')
 parser.add_argument('--GD_train_ratio', type=int, default=1)
 parser.add_argument('--sampler', action='store_true')
+parser.add_argument('--supervised', action='store_true')
 args = parser.parse_args()
 
 # GPU Setting
@@ -223,30 +229,35 @@ class WeatherTransfer(object):
         self.shift_lmda = lambda a, b: (1. - self.lmda) * a + self.lmda * b
         print('Build has been completed.')
 
-    def update_inference(self, images, labels):
+    def update_inference(self, images, r_labels, d_labels=None):
         # --- UPDATE(Inference) --- #
         self.g_opt.zero_grad()
 
         # for real
-        pred_labels = self.estimator(images)
-        real_res = self.discriminator(images, pred_labels.detach())
-        real_d_out = real_res[0]
-        real_feat = real_res[3]
+        if args.supervised:
+            pred_labels = d_labels
+            # real_res = self.discriminator(images, pred_labels)
+        else:
+            pred_labels = self.estimator(images).detach()
+            # real_res = self.discriminator(images, pred_labels)
 
-        fake_out = self.inference(images, labels)
+        # real_d_out = real_res[0]
+        # real_feat = real_res[3]
+
+        fake_out = self.inference(images, r_labels)
         fake_c_out = self.estimator(fake_out)
-        fake_res = self.discriminator(fake_out, labels)
+        fake_res = self.discriminator(fake_out, r_labels)
         fake_d_out = fake_res[0]
-        fake_feat = fake_res[3]
+        # fake_feat = fake_res[3]
 
         # Calc Generator Loss
         g_loss_adv = gen_hinge(fake_d_out)       # Adversarial loss
         g_loss_l1 = l1_loss(fake_out, images)
-        g_loss_w = pred_loss(fake_c_out, labels)   # Weather prediction
+        g_loss_w = pred_loss(fake_c_out, r_labels)   # Weather prediction
 
         # abs_loss = torch.mean(torch.abs(fake_out - images), [1, 2, 3])
         diff = torch.mean(torch.abs(fake_out - images), [1, 2, 3])
-        lmda = torch.mean(torch.abs(pred_labels.detach() - labels), 1)
+        lmda = torch.mean(torch.abs(pred_labels - r_labels), 1)
         loss_con = torch.mean(diff / (lmda + 1e-7))  # Reconstraction loss
 
         lmda_con, lmda_w = (1, 1)
@@ -274,8 +285,12 @@ class WeatherTransfer(object):
         self.d_opt.zero_grad()
 
         # for real
-        real_c_out = self.estimator(images)
-        pred_labels = real_c_out.detach()
+        if args.supervised:
+            pred_labels = labels
+        else:
+            real_c_out = self.estimator(images)
+            pred_labels = real_c_out.detach()
+
         real_d_out_pred = self.discriminator(images, pred_labels)[0]
 
         # for fake
@@ -383,15 +398,21 @@ class WeatherTransfer(object):
                 else:
                     self.lmda = self.global_step / self.all_step
 
-                images, _ = (d.to('cuda') for d in data)
-                rand_images, _ = (d.to('cuda') for d in rand_data)
-                rand_labels = self.estimator(rand_images).detach()
+                images, d_ = (d.to('cuda') for d in data)
+                rand_images, r_ = (d.to('cuda') for d in rand_data)
+
+                if args.supervised:
+                    rand_labels = torch.eye(5)[r_].to('cuda')
+                    d_ = torch.eye(5)[d_].to('cuda')
+                else:
+                    rand_labels = self.estimator(rand_images).detach()
+
                 if images.size(0) != self.batch_size:
                     continue
 
                 self.update_discriminator(images, rand_labels)
                 if self.global_step % args.GD_train_ratio == 0:
-                    self.update_inference(images, rand_labels)
+                    self.update_inference(images, rand_labels, d_)
 
                 # --- EVALUATION ---#
                 if (self.global_step % eval_per_step == 0) and not args.image_only:
