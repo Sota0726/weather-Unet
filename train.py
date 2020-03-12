@@ -11,7 +11,7 @@ parser.add_argument('--name', type=str, default='cUNet')
 parser.add_argument('--gpu', type=str, default='1')
 parser.add_argument('--save_dir', type=str, default='cp/transfer')
 parser.add_argument('--pkl_path', type=str,
-                    # default="/mnt/fs2/2018/matsuzaki/results/flickr_data/df_con_train.pkl")
+                    # default='/mnt/fs2/2019/okada/from_nitta/parm_0.3/sep_with_est-label.pkl'
                     default='/mnt/fs2/2019/Takamuro/db/i2w/sepalated_data.pkl')
 parser.add_argument('--estimator_path', type=str,
                     default='/mnt/fs2/2019/Takamuro/m2_research/weather_transfer/cp/classifier_i2w_for_train_strict_sep/better_resnet101_10.pt')
