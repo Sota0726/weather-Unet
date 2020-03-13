@@ -17,10 +17,14 @@ parser.add_argument('--image_root', type=str,
 parser.add_argument('--pkl_path', type=str,
                     default='/mnt/fs2/2019/Takamuro/db/i2w/sepalated_data.pkl')
 parser.add_argument('--output_dir', type=str,
+<<<<<<< HEAD
                     default='/mnt/fs2/2019/takamuro/m2_research/weather_transfer/results/eval_classifier_i2w/i2w_strict_sep_res101_val_e20')
+=======
+                    default='/mnt/fs2/2019/takamuro/m2_research/weather_transfer/results/eval_classifier_i2w/i2w_strict_sep_res101_val_e20')
+>>>>>>> 0a47934455a43cf85ac80df1d40b84f76cd25cd7
 # imb mean imbalanced
 parser.add_argument('--classifer_path', type=str,
-                    default='/mnt/data2/takamuro/m2/cUNet-Pytorch/cp/classifier/classifier_i2w_strict/better_resnet101_10.pt')
+                    default='/mnt/fs2/2019/Takamuro/m2_research/weather_transfer/cp/classifier_i2w_for_val_strict_sep/resnet101_epoch15_step59312.pt')
 # parser.add_argument('--classifer_path', type=str, default='cp/classifier/res_aug_5_cls/resnet101_95.pt')
 parser.add_argument('--input_size', type=int, default=224)
 parser.add_argument('--batch_size', type=int, default=10)
