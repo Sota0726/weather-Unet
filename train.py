@@ -11,14 +11,9 @@ parser.add_argument('--name', type=str, default='cUNet')
 parser.add_argument('--gpu', type=str, default='1')
 parser.add_argument('--save_dir', type=str, default='cp/transfer')
 parser.add_argument('--pkl_path', type=str,
-<<<<<<< HEAD
-                    # default='/mnt/fs2/2019/okada/from_nitta/parm_0.3/sep_with_est-label.pkl'
-                    default='/mnt/fs2/2019/Takamuro/db/i2w/sepalated_data.pkl')
+                    default='/mnt/fs2/2019/okada/from_nitta/parm_0.3/sep_for_T-train.pkl'
+                    # default='/mnt/fs2/2019/Takamuro/db/i2w/sepalated_data.pkl')
                     )
-=======
-                    # default='/mnt/fs2/2019/okada/from_nitta/parm_0.3/sep_with_est-label.pkl'
-                    default='/mnt/fs2/2019/Takamuro/db/i2w/sepalated_data.pkl')
->>>>>>> 767af391fef747f84726e753ba5af2273a68cdbd
 parser.add_argument('--estimator_path', type=str,
                     default='/mnt/fs2/2019/Takamuro/m2_research/weather_transfer/cp/classifier_i2w_for_train_strict_sep/better_resnet101_10.pt')
 parser.add_argument('--input_size', type=int, default=224)
@@ -125,7 +120,7 @@ class WeatherTransfer(object):
             print('loaded {} data'.format(len(df)))
             pivot = int(len(df) * train_data_rate)
             df_shuffle = df.sample(frac=1)
-            df_sep = {'train': df_shuffle[:pivot], 'test': df_shuffle[pivot:]}
+            df_sep = {'train': df_shuffle[df_shuffle['mode'] == 'train'], 'test': df_shuffle[df_shuffle['mode'] == 'test']}
             del df, df_shuffle
             loader = lambda s: FlickrDataLoader(args.image_root, df_sep[s], self.cols, transform=self.transform[s], class_id=False, imbalance=args.sampler)
 
@@ -145,7 +140,7 @@ class WeatherTransfer(object):
             print('loaded {} data'.format(len(df)))
             pivot = int(len(df) * train_data_rate)
             df_shuffle = df.sample(frac=1)
-            df_sep = {'train': df_shuffle[:pivot], 'test': df_shuffle[pivot:]}
+            df_sep = {'train': df_shuffle[df_shuffle['mode'] == 'train'], 'test': df_shuffle[df_shuffle['mode'] == 'test']}
             del df, df_shuffle
             loader = lambda s: FlickrDataLoader(args.image_root, df_sep[s], self.cols, transform=self.transform[s])
 
@@ -272,6 +267,7 @@ class WeatherTransfer(object):
             'losses/g_loss_adv/train': g_loss_adv.item(),
             'losses/g_loss_l1/train': g_loss_l1.item(),
             'losses/g_loss_w/train': g_loss_w.item(),
+            'losses/loss_con/train': loss_con.item(),
             'variables/lmda': self.lmda
             })
 
