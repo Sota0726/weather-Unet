@@ -250,9 +250,14 @@ class WeatherTransfer(object):
         g_loss_w = pred_loss(fake_c_out, r_labels)   # Weather prediction
 
         # abs_loss = torch.mean(torch.abs(fake_out - images), [1, 2, 3])
-        diff = torch.mean(torch.abs(fake_out - images), [1, 2, 3])
-        lmda = torch.mean(torch.abs(pred_labels - r_labels), 1)
-        loss_con = torch.mean(diff / (lmda + 1e-7))  # Reconstraction loss
+        if args.supervised:
+            diff = torch.mean(torch.abs(fake_out - images), [1, 2, 3])
+            lmda = torch.sum(torch.abs(pred_labels - r_labels), 1)
+            loss_con = torch.mean(diff / (lmda + 1e-2))  # Reconstraction loss
+        else:
+            diff = torch.mean(torch.abs(fake_out - images), [1, 2, 3])
+            lmda = torch.mean(torch.abs(pred_labels - r_labels), 1)
+            loss_con = torch.mean(diff / (lmda + 1e-7))  # Reconstraction loss
 
         lmda_con, lmda_w = (1, 1)
 
@@ -266,6 +271,7 @@ class WeatherTransfer(object):
             'losses/g_loss_adv/train': g_loss_adv.item(),
             'losses/g_loss_l1/train': g_loss_l1.item(),
             'losses/g_loss_w/train': g_loss_w.item(),
+            'losses/loss_con/train': loss_con.item(),
             'variables/lmda': self.lmda
             })
 
@@ -306,7 +312,11 @@ class WeatherTransfer(object):
         g_loss_w_ = []
         fake_out_li = []
         d_loss_ = []
+        # loss_con_ = []
+
         images, labels = self.test_random_sample[0]
+        # if not args.supervised:
+        #     labels_ = self.estimator(images).detach()
         blank = torch.zeros_like(images[0]).unsqueeze(0)
         ref_images, ref_labels = self.test_random_sample[1]
 
@@ -325,12 +335,16 @@ class WeatherTransfer(object):
                 real_d_out_ = self.discriminator(images, labels)[0]
                 fake_d_out_ = self.discriminator(fake_out_, ref_labels_expand)[0]
 
+            # diff = torch.mean(torch.abs(fake_out_ - images), [1, 2, 3])
+            # lmda = torch.mean(torch.abs(pred_labels_ - ref_labels_expand), 1)
+            # loss_con_ = torch.mean(diff / (lmda + 1e-7))
 
             fake_out_li.append(fake_out_)
             g_loss_adv_.append(adv_loss(fake_d_out_, self.real).item())
             g_loss_l1_.append(l1_loss(fake_out_, images).item())
             g_loss_w_.append(pred_loss(fake_c_out_, ref_labels_expand).item())
             d_loss_.append(dis_hinge(fake_d_out_, real_d_out_).item())
+            # loss_con_.append(torch.mean(diff / (lmda + 1e-7).item())
 
         # --- WRITING SUMMARY ---#
         self.scalar_dict.update({
