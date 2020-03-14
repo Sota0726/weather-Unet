@@ -8,7 +8,7 @@ from tqdm import trange
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--image_root', type=str,
-                    default='/mnt/fs2/2019/takamuro/db/photos_usa_2016/')
+                    default='/mnt/8THDD/sota/dataset/photos_usa_2016')
 parser.add_argument('--pkl_path', type=str,
                     default='/mnt/fs2/2019/okada/from_nitta/parm_0.3/sepalated_data.pkl')
 parser.add_argument('--save_path', type=str, default='cp/estimator')
@@ -18,9 +18,10 @@ parser.add_argument('--input_size', type=int, default=224)
 parser.add_argument('--lr', type=float, default=1e-4)
 parser.add_argument('--wd', type=float, default=1e-5)
 parser.add_argument('--num_epoch', type=int, default=100)
-parser.add_argument('--batch_size', type=int, default=64)
+parser.add_argument('--batch_size', '-bs', type=int, default=64)
 parser.add_argument('--num_workers', type=int, default=4)
 parser.add_argument('--mode', type=str, default='T', help='T(Train data) or E(Evaluate data)')
+parser.add_argument('--multi', action='store_true')
 
 args = parser.parse_args()
 
@@ -122,6 +123,8 @@ num_classes = train_set.num_classes
 
 model = models.resnet101(pretrained=False, num_classes=num_classes)
 model.cuda()
+if args.multi:
+    model = nn.DataParallel(model)
 
 # train setting
 opt = torch.optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.wd)
@@ -140,6 +143,8 @@ for epoch in tqdm_iter:
     for i, data in enumerate(train_loader, start=0):
         inputs, labels = (d.to('cuda') for d in data)
         # soft_labels = soft_transform(labels, std=0.1)
+
+        tqdm_iter.set_description('Training [ {} step ]'.format(global_step))
 
         # optimize
         opt.zero_grad()
@@ -180,10 +185,6 @@ for epoch in tqdm_iter:
 
     if epoch % save_per_epoch == 0:
         out_path = os.path.join(save_dir, 'est_resnet101_'+str(epoch)+'_step'+str(global_step)+'.pt')
-
         torch.save(model, out_path)
-
-    tqdm_iter.set_description('{} iter: Train loss={:.5f} Test loss={:.5f}'
-                              .format(global_step, train_mse, test_mse))
 
 print('Done: training')
