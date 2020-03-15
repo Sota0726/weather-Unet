@@ -9,7 +9,7 @@ from tqdm import trange
 parser = argparse.ArgumentParser()
 parser.add_argument('--image_root', type=str,
 <<<<<<< HEAD
-                    default='/mnt/HDD8T/sota/dataset/photos_usa_2016/')
+                    default='/mnt/HDD8T/takamuro/dataset/photos_usa_2016/')
 =======
                     default='/mnt/8THDD/sota/dataset/photos_usa_2016')
 >>>>>>> 17e001893b6a5354e2986cc7b3fdfb28faa42c69
