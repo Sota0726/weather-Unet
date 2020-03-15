@@ -8,7 +8,15 @@ from tqdm import trange
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--image_root', type=str,
-                    default='/mnt/8THDD/takauro/dataset/photos_usa_2016')
+<<<<<<< HEAD
+                    default='/mnt/8THDD/sota/dataset/photos_usa_2016')
+=======
+<<<<<<< HEAD
+                    default='/mnt/HDD8T/takamuro/dataset/photos_usa_2016/')
+=======
+                    default='/mnt/8THDD/sota/dataset/photos_usa_2016')
+>>>>>>> 17e001893b6a5354e2986cc7b3fdfb28faa42c69
+>>>>>>> 6a471a8391afeff68ac3d5a12536e798a61feb0e
 parser.add_argument('--pkl_path', type=str,
                     default='/mnt/fs2/2019/okada/from_nitta/parm_0.3/sepalated_data.pkl')
 parser.add_argument('--save_path', type=str, default='cp/estimator')
