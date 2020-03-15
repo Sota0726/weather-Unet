@@ -102,7 +102,7 @@ class ImageLoader(Dataset):
 
 
 class ClassImageLoader(Dataset):
-    def __init__(self, paths, transform=None):
+    def __init__(self, paths, transform=None, inf=None):
         # without z-other
         paths = [p for p in paths if 'z-other' not in p]
         # count dirs on root
@@ -114,6 +114,7 @@ class ClassImageLoader(Dataset):
         self.classes = files_dir
         self.num_classes = len(files_dir)
         self.transform = transform
+        self.inf = inf
 
     def get_class(self, idx):
         string = self.paths[idx].split('/')[-2]
@@ -128,7 +129,10 @@ class ClassImageLoader(Dataset):
         target = self.get_class(idx)
         if self.transform:
             image = self.transform(image)
-        return image, target  # , self.paths[idx]
+        if self.inf:
+            return image, target, self.paths[idx]
+        else:
+            return image, target
 
 
 class ImageFolder(DatasetFolder):
