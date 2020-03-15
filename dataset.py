@@ -75,7 +75,7 @@ class FlickrDataLoader(Dataset):
             return image, label, cls_id
         else:
             cls_id = self.get_class(idx)
-            return image, cls_id, idx
+            return image, cls_id  # , idx
 
 class ImageLoader(Dataset):
     def __init__(self, paths, transform=None):
@@ -90,11 +90,15 @@ class ImageLoader(Dataset):
         try:
             image = Image.open(self.paths[idx])
         except:
+            print('load error{}'.format(self.paths[idx]))
             return self.__getitem__(idx)
         image = image.convert('RGB')
         if self.transform:
             image = self.transform(image)
-        return image, True
+        # for train.py
+        # return image, True
+        # for inception_score.py
+        return image
 
 
 class ClassImageLoader(Dataset):
