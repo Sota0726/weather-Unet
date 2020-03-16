@@ -2,6 +2,7 @@ from glob import glob
 import argparse
 import os
 import numpy as np
+import sys
 from scipy.stats import entropy
 
 parser = argparse.ArgumentParser()
@@ -27,6 +28,7 @@ import torchvision.transforms as transforms
 
 from torchvision.models.inception import inception_v3
 
+sys.path.append(os.getcwd())
 from dataset import ImageLoader
 
 
@@ -96,7 +98,7 @@ def inception_score(imgs, cuda=True, batch_size=32, resize=False, splits=1):
 
 
 if __name__ == '__main__':
-    paths = glob(args.input_path + '*.jpg')
+    paths = glob(args.input_path + '*.png')
 
     transform = transforms.Compose([
         transforms.Resize((args.input_size,)*2),

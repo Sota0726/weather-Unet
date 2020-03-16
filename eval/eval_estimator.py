@@ -22,7 +22,7 @@ parser.add_argument('--image_root', type=str, default='/mnt/fs2/2019/Takamuro/db
 parser.add_argument('--cp_path', type=str, default='/mnt/fs2/2018/matsuzaki/results/cp/out110_res101_e10_less25/out110_res101_e10_less25_e0017.pt')
 parser.add_argument('--classifer_path', type=str, default='cp/classifier/i2w_res101_val_n/resnet101_95.pt')
 parser.add_argument('--input_size', type=int, default=224)
-parser.add_argument('--batch_size', type=int, default=16)
+parser.add_argument('--batch_size', type=int, default=10)
 parser.add_argument('--num_workers', type=int, default=4)
 parser.add_argument('--num_classes', type=int, default=6)
 
@@ -42,9 +42,7 @@ from dataset import FlickrDataLoader
 from sampler import ImbalancedDatasetSampler
 
 
-if __name__=='__main__':
-    s_li = ['sunny', 'cloudy', 'rain', 'snow', 'foggy'] 
-    c_li = ['Clear', 'Clouds', 'Rain', 'Snow', 'Mist'] 
+if __name__ == '__main__':
     os.makedirs(args.output_dir, exist_ok=True)
     df = pd.read_pickle(args.pkl_path)
     df = df[:len(df)//2]  # test data
@@ -59,44 +57,30 @@ if __name__=='__main__':
         transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
     ])
 
-    dataset = FlickrDataLoader(args.image_root, df, cols, 
-                               transform=transform, class_id=True)
+    dataset = FlickrDataLoader(args.image_root, df, cols, transform=transform)
 
     loader = torch.utils.data.DataLoader(
             dataset,
             batch_size=args.batch_size,
             num_workers=args.num_workers
             )
-    random_loader = torch.utils.data.DataLoader(
-            dataset,
-            batch_size=args.batch_size,
-            num_workers=args.num_workers,
-            )
 
     # load model
-    transfer = Conditional_UNet(num_classes=args.num_classes)
-    sd = torch.load(args.cp_path)
-    transfer.load_state_dict(sd['inference'])
-
     classifer = torch.load(args.classifer_path)
     classifer.eval()
 
     if args.gpu > 0:
-        transfer.cuda()
         classifer.cuda()
 
     bs = args.batch_size
 
     cls_li = []
     vec_li = []
-    for i, (data, rnd) in tqdm(enumerate(zip(loader, random_loader)), total=len(df)//bs):
+    for i, data in tqdm(enumerate(loader), total=len(df)//bs):
         batch = data[0].to('cuda')
-        r_batch = rnd[0].to('cuda')
-        c_batch = rnd[1].to('cuda')
-        r_cls = rnd[2].to('cuda')
+        signals = data[1].to('cuda')
         # r_cls = torch.argmax(classifer(r_batch).detach(), 1)
-        out = transfer(batch, c_batch)
-
+        preds = classifer(batch)
         # for check output
         # [save_image(out[(r_cls == j)], os.path.join(args.output_dir, 'out', s_li[j]+'_{}.png'.format(i)), normalize=True) for j in range(5) if len((r_cls == j).nonzero()) != 0]
         # if i>20: exit()
@@ -107,14 +91,3 @@ if __name__=='__main__':
     all_res = torch.cat(cls_li, 0).numpy()
     y_true, y_pred = (all_res[:, 0], all_res[:, 1])
 
-    table = classification_report(y_true, y_pred)
-
-    print(table)
-
-    matrix = confusion_matrix(y_true, y_pred, labels=np.arange(len(s_li)))
-    df = pd.DataFrame(data=matrix, index=s_li, columns=s_li)
-    df.to_pickle(os.path.join(args.output_dir, 'cm.pkl'))
-
-    plot = sns.heatmap(df, square=True, annot=True, fmt='d')
-    fig = plot.get_figure()
-    fig.savefig(os.path.join(args.output_dir, 'pr_table.png'))

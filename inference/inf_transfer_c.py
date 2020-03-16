@@ -7,6 +7,7 @@ import pandas as pd
 from PIL import Image
 from tqdm import tqdm
 import shutil
+from glob import glob
 from torchvision.utils import save_image
 
 parser = argparse.ArgumentParser()
@@ -25,6 +26,7 @@ parser.add_argument('--input_size', type=int, default=224)
 parser.add_argument('--batch_size', type=int, default=10)
 parser.add_argument('--num_workers', type=int, default=8)
 parser.add_argument('--num_classes', type=int, default=5)
+parser.add_argument('--image_only', action='store_true')
 args = parser.parse_args()
 
 os.environ['CUDA_DEVICE_ORDER'] = "PCI_BUS_ID"
@@ -39,15 +41,10 @@ import torchvision.models as models
 from torch.utils.data import Dataset
 
 sys.path.append(os.getcwd())
-from dataset import ClassImageLoader
+from dataset import ClassImageLoader, ImageLoader
 from cunet import Conditional_UNet
 
 if __name__ == '__main__':
-    s_li = ['sunny', 'cloudy', 'rain', 'snow', 'foggy']
-    os.makedirs(args.output_dir, exist_ok=True)
-    sep_data = pd.read_pickle(args.pkl_path)
-    sep_data = sep_data['test']
-    print('loaded {} data'.format(len(sep_data)))
 
     transform = transforms.Compose([
         transforms.Resize((args.input_size,)*2),
@@ -55,7 +52,19 @@ if __name__ == '__main__':
         transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
     ])
 
-    dataset = ClassImageLoader(paths=sep_data, transform=transform, inf=True)
+    if args.image_only:
+        sep_data = glob(os.path.join(args.image_root, '*.png'))
+        print('loaded {} data'.format(len(sep_data)))
+
+        dataset = ImageLoader(paths=sep_data, transform=transform, inf=True)
+    else:
+        s_li = ['sunny', 'cloudy', 'rain', 'snow', 'foggy']
+        os.makedirs(args.output_dir, exist_ok=True)
+        sep_data = pd.read_pickle(args.pkl_path)
+        sep_data = sep_data['test']
+        print('loaded {} data'.format(len(sep_data)))
+
+        dataset = ClassImageLoader(paths=sep_data, transform=transform, inf=True)
 
     loader = torch.utils.data.DataLoader(
             dataset,
