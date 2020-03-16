@@ -31,7 +31,9 @@ def pred_loss(preds, labels, one_hot=False):
         max_ind = torch.argmax(preds, dim=1)
         one_hot_ = torch.zeros_like(preds)
         one_hot_[:, max_ind] = preds[:, max_ind]
-        loss = adv_loss(one_hot_, labels)
+        # loss = adv_loss(one_hot_, labels)
+        criterion = nn.CrossEntropyLoss()
+        loss = criterion(preds, labels)
     else:
         criterion = nn.MSELoss()
         loss = criterion(preds, labels)
