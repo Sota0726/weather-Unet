@@ -24,6 +24,7 @@ os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
 
 import torch
 import torchvision.transforms as transforms
+import torch.nn.functional as F
 
 sys.path.append(os.getcwd())
 from dataset import FlickrDataLoader
@@ -65,6 +66,9 @@ if __name__ == '__main__':
         batch = data[0].to('cuda')
         signals = data[1].to('cuda')
         pred = classifer(batch).detach()
+
+        l1_ = F.l1_loss(pred, signals)
+        mse_ = F.mse_loss(pred, signals)
 
         l1 = torch.mean(torch.abs(pred - signals), dim=0)
         l1_li = np.append(l1_li, l1.cpu().numpy().reshape(1, -1), axis=0)

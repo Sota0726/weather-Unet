@@ -19,7 +19,7 @@ parser.add_argument('--lr', type=float, default=1e-4)
 parser.add_argument('--wd', type=float, default=1e-5)
 parser.add_argument('--num_epoch', type=int, default=100)
 parser.add_argument('--batch_size', '-bs', type=int, default=64)
-parser.add_argument('--num_workers', type=int, default=4)
+parser.add_argument('--num_workers', type=int, default=64)
 parser.add_argument('--mode', type=str, default='T', help='T(Train data) or E(Evaluate data)')
 parser.add_argument('--multi', action='store_true')
 parser.add_argument('--augmentation', action='store_true')
@@ -38,9 +38,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 from dataset import FlickrDataLoader
 from sampler import ImbalancedDatasetSampler
-from ops import soft_transform, l1_loss
-
-
+from ops import soft_transform, l1_loss, adv_loss
 
 comment = '_lr-{}_bs-{}_ne-{}_x{}_name-{}'.format(args.lr,
                                                   args.batch_size,
@@ -132,7 +130,7 @@ train_loader = torch.utils.data.DataLoader(
 
 test_loader = torch.utils.data.DataLoader(
         test_set,
-        sampler=ImbalancedDatasetSampler(test_set),
+        #sampler=ImbalancedDatasetSampler(test_set),
         drop_last=True,
         batch_size=args.batch_size,
         num_workers=args.num_workers)
@@ -147,7 +145,8 @@ if args.multi:
 # train setting
 opt = torch.optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.wd)
 
-criterion = nn.MSELoss()
+# criterion = nn.MSELoss()
+criterion = nn.L1Loss()
 
 eval_per_iter = 100
 save_per_epoch = 5
@@ -156,8 +155,8 @@ global_step = 0
 tqdm_iter = trange(args.num_epoch, desc='Training', leave=True)
 for epoch in tqdm_iter:
     loss_li = []
-    mse_li = []
-    diff_li = []
+    diff_mse_li = []
+    diff_l1_li = []
     for i, data in enumerate(train_loader, start=0):
         inputs, labels = (d.to('cuda') for d in data)
         # soft_labels = soft_transform(labels, std=0.1)
@@ -168,36 +167,40 @@ for epoch in tqdm_iter:
         opt.zero_grad()
         outputs = model(inputs)
         loss = criterion(outputs, labels)
+
         loss.backward()
         opt.step()
 
-        diff = l1_loss(outputs.detach(), labels)
-        mse_li.append(loss.item())
-        diff_li.append(diff.item())
+        # diff_l1 = l1_loss(outputs.detach(), labels)
+        diff_l1 = l1_loss(outputs.detach(), labels)
+        diff_mse = adv_loss(outputs.detach(), labels)
+
+        diff_mse_li.append(diff_mse.item())
+        diff_l1_li.append(diff_l1.item())
 
         if global_step % eval_per_iter == 0:
-            mse_li_ = []
-            diff_li_ = []
+            diff_mse_li_ = []
+            diff_l1_li_ = []
             for j, data_ in enumerate(test_loader, start=0):
                 with torch.no_grad():
                     inputs_, labels_ = (d.to('cuda') for d in data_)
                     outputs_ = model(inputs_).detach()
-                    mse_ = criterion(outputs_, labels_)
-                    diff_ = l1_loss(outputs_, labels_)
-                    mse_li_.append(mse_.item())
-                    diff_li_.append(diff_.item())
+                    diff_mse_ = adv_loss(outputs_, labels_)
+                    diff_l1_ = l1_loss(outputs_, labels_)
+                    diff_mse_li_.append(diff_mse_.item())
+                    diff_l1_li_.append(diff_l1_.item())
 
             # write summary
-            train_mse = np.mean(mse_li)
-            train_diff = np.mean(diff_li)
-            test_mse = np.mean(mse_li_)
-            test_diff = np.mean(diff_li_)
+            train_mse = np.mean(diff_mse_li)
+            train_diff_l1 = np.mean(diff_l1_li)
+            test_mse = np.mean(diff_mse_li_)
+            test_diff_l1 = np.mean(diff_l1_li_)
             writer.add_scalars('mse_loss', {'train': train_mse,
                                             'test': test_mse}, global_step)
-            writer.add_scalars('l1_loss', {'train': train_diff,
-                                           'test': test_diff}, global_step)
-            mse_li = []
-            diff_li = []
+            writer.add_scalars('l1_loss', {'train': train_diff_l1,
+                                           'test': test_diff_l1}, global_step)
+            diff_mse_li = []
+            diff_l1_li = []
 
         global_step += 1
 
