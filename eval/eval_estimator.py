@@ -10,7 +10,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--gpu', type=str, default='1')
 parser.add_argument('--pkl_path', type=str,
                     default='/mnt/fs2/2019/okada/from_nitta/parm_0.3/for_transfer-est_training.pkl')
-parser.add_argument('--image_root', type=str, default="/mnt/HDD8T/takamuro/dataset/photos_usa_2016/")
+parser.add_argument('--image_root', type=str, default='/mnt/8THDD/takamuro/dataset/photos_usa_2016')
 parser.add_argument('--classifer_path', type=str,
                     default='/mnt/fs2/2019/Takamuro/m2_research/weather_transfer/cp/estimator/est_res101_flicker-p03th1_sep-val/est_resnet101_15_step17760.pt')
 parser.add_argument('--input_size', type=int, default=224)
@@ -24,6 +24,7 @@ os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
 
 import torch
 import torchvision.transforms as transforms
+import torch.nn.functional as F
 
 sys.path.append(os.getcwd())
 from dataset import FlickrDataLoader
@@ -65,6 +66,9 @@ if __name__ == '__main__':
         batch = data[0].to('cuda')
         signals = data[1].to('cuda')
         pred = classifer(batch).detach()
+
+        l1_ = F.l1_loss(pred, signals)
+        mse_ = F.mse_loss(pred, signals)
 
         l1 = torch.mean(torch.abs(pred - signals), dim=0)
         l1_li = np.append(l1_li, l1.cpu().numpy().reshape(1, -1), axis=0)
