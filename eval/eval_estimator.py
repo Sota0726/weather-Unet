@@ -12,7 +12,7 @@ parser.add_argument('--pkl_path', type=str,
                     default='/mnt/fs2/2019/okada/from_nitta/parm_0.3/for_transfer-est_training.pkl')
 parser.add_argument('--image_root', type=str, default="/mnt/HDD8T/takamuro/dataset/photos_usa_2016/")
 parser.add_argument('--classifer_path', type=str,
-                    default='/mnt/fs2/2019/Takamuro/m2_research/weather_transfer/cp/estimator/est_res101_flicker-p03th1_sep-trian/better_est_resnet101_10_step12210.pt')
+                    default='/mnt/fs2/2019/Takamuro/m2_research/weather_transfer/cp/estimator/est_res101_flicker-p03th1_sep-val/est_resnet101_15_step17760.pt')
 parser.add_argument('--input_size', type=int, default=224)
 parser.add_argument('--batch_size', type=int, default=5)
 parser.add_argument('--num_workers', type=int, default=4)

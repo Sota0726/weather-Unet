@@ -173,6 +173,7 @@ class WeatherTransfer(object):
 
         self.estimator = torch.load(args.estimator_path)
         if args.one_hot:
+            self.estimator_ = self.estimator.eval().cuda()
             self.estimator = nn.Sequential(
                         self.estimator,
                         nn.Softmax(dim=1)
@@ -225,7 +226,7 @@ class WeatherTransfer(object):
         self.shift_lmda = lambda a, b: (1. - self.lmda) * a + self.lmda * b
         print('Build has been completed.')
 
-    def update_inference(self, images, r_labels, d_labels=None):
+    def update_inference(self, images, r_labels, d_labels=None, r_labels_=None):
         # --- UPDATE(Inference) --- #
         self.g_opt.zero_grad()
 
@@ -249,7 +250,7 @@ class WeatherTransfer(object):
         # Calc Generator Loss
         g_loss_adv = gen_hinge(fake_d_out)       # Adversarial loss
         g_loss_l1 = l1_loss(fake_out, images)
-        g_loss_w = pred_loss(fake_c_out, r_labels, one_hot=args.one_hot)   # Weather prediction
+        g_loss_w = pred_loss(fake_c_out, r_labels_, one_hot=args.one_hot)   # Weather prediction
 
         # abs_loss = torch.mean(torch.abs(fake_out - images), [1, 2, 3])
         if args.supervised:
@@ -281,14 +282,14 @@ class WeatherTransfer(object):
             'io/train': torch.cat([images, fake_out], dim=3),
             })
 
-    def update_discriminator(self, images, labels):
+    def update_discriminator(self, images, labels, d_=None):
 
         # --- UPDATE(Discriminator) ---#
         self.d_opt.zero_grad()
 
         # for real
         if args.supervised:
-            pred_labels = labels
+            pred_labels = d_
         else:
             real_c_out = self.estimator(images)
             pred_labels = real_c_out.detach()
@@ -422,7 +423,7 @@ class WeatherTransfer(object):
 
                 self.update_discriminator(images, rand_labels)
                 if self.global_step % args.GD_train_ratio == 0:
-                    self.update_inference(images, rand_labels, d_)
+                    self.update_inference(images, rand_labels, d_, r_labels_=torch.argmax(self.estimator_(rand_images).detach(), dim=1))
 
                 # --- EVALUATION ---#
                 if (self.global_step % eval_per_step == 0) and not args.image_only:

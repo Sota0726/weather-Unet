@@ -60,7 +60,7 @@ if __name__ == '__main__':
 
     cls_li = ['Clear', 'Clouds', 'Rain', 'Snow', 'Mist']
     if args.image_only:
-        paths = glob(os.path.join(args.image_root, '*.png'))
+        paths = glob(os.path.join(args.image_root, '*.jpg'))
         print('loaded {} data'.format(len(paths)))
 
         df = pd.DataFrame.from_dict({'paths': [path.split('/')[-1] for path in paths]})
@@ -108,5 +108,5 @@ if __name__ == '__main__':
     for i, res in enumerate(all_res):
         df.iat[i, df.columns.get_loc('w_condition')] = cls_li[res[0]]
     print(df)
-    df.to_pickle(os.path.join(args.output_dir, 'sep_with_est-label.pkl'))
-    # df.to_pickle(os.path.join(args.output_dir, 'check_result.pkl'))
+    # df.to_pickle(os.path.join(args.output_dir, 'sep_with_est-label.pkl'))
+    df.to_pickle(os.path.join(args.output_dir, 'check_result.pkl'))
