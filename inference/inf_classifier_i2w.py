@@ -12,7 +12,8 @@ from tqdm import tqdm
 parser = argparse.ArgumentParser()
 parser.add_argument('--gpu', type=int, default=2)
 parser.add_argument('--image_root', type=str,
-                    default='/mnt/fs2/2019/takamuro/db/photos_usa_2016/')
+                    # default='/mnt/fs2/2019/takamuro/db/photos_usa_2016/')
+                    default='/mnt/fs2/2019/Takamuro/m2_research/weather_transfer/results/c_UNet/inf/cUNet_w-c-i2w-res101_img-i2w-train_sampler_D1T1_supervised_wloss-crossent_e0000_s1000/i2w')
 parser.add_argument('--pkl_path', type=str,
                     default='/mnt/fs2/2019/okada/from_nitta/parm_0.3/sepalated_data.pkl')
 parser.add_argument('--output_dir', type=str,
@@ -60,7 +61,7 @@ if __name__ == '__main__':
 
     cls_li = ['Clear', 'Clouds', 'Rain', 'Snow', 'Mist']
     if args.image_only:
-        paths = glob(os.path.join(args.image_root, '*.jpg'))
+        paths = sorted(glob(os.path.join(args.image_root, '*.jpg')))
         print('loaded {} data'.format(len(paths)))
 
         df = pd.DataFrame.from_dict({'paths': [path.split('/')[-1] for path in paths]})
