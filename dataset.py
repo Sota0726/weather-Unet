@@ -32,8 +32,9 @@ class FlickrDataLoader(Dataset):
         self.columns = columns
         self.photo_id = df['photo'].to_list()
         self.class_id = class_id
-        df_ = df.loc[:, columns].fillna(0)
-        self.conditions = (df_ - df_.mean()) / df_.std()
+        # df_ = df.loc[:, columns].fillna(0)
+        # self.conditions = (df_ - df_.mean()) / df_.std()
+        self.conditions = df.loc[:, columns]
         if imbalance:
             self.labels = df['w_condition']
         else:
@@ -42,7 +43,7 @@ class FlickrDataLoader(Dataset):
         self.cls_li = ['Clear', 'Clouds', 'Rain', 'Snow', 'Mist']
         self.num_classes = len(columns)
         self.transform = transform
-        del df, df_
+        del df  # , df_
 
     def __len__(self):
         return len(self.photo_id)
