@@ -72,7 +72,7 @@ class FlickrDataLoader(Dataset):
             return image, label
         elif self.class_id:
             cls_id = self.get_class(idx)
-            return image, label, cls_id
+            return image, cls_id, label
         else:
             cls_id = self.get_class(idx)
             return image, cls_id  # , idx
@@ -96,9 +96,9 @@ class ImageLoader(Dataset):
         if self.transform:
             image = self.transform(image)
         # for train.py
-        # return image, True
+        return image, True
         # for inception_score.py
-        return image
+        # return image
 
 
 class ClassImageLoader(Dataset):

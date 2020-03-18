@@ -3,7 +3,7 @@ import os
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--image_root', type=str,
-                    default="/mnt/fs2/2019/Takamuro/db/photos_usa_2016"
+                    default='/mnt/8THDD/takamuro/dataset/photos_usa_2016'
                     # default='/mnt/fs2/2018/matsuzaki/dataset_fromnitta/Image/'
                     )
 parser.add_argument('--name', type=str, default='cUNet')
@@ -11,11 +11,13 @@ parser.add_argument('--name', type=str, default='cUNet')
 parser.add_argument('--gpu', type=str, default='1')
 parser.add_argument('--save_dir', type=str, default='cp/transfer')
 parser.add_argument('--pkl_path', type=str,
-                    default='/mnt/fs2/2019/okada/from_nitta/parm_0.3/sep_for_T-train.pkl'
-                    # default='/mnt/fs2/2019/Takamuro/db/i2w/sepalated_data.pkl')
+                    default='/mnt/fs2/2019/okada/from_nitta/parm_0.3/for_transfer-est_training.pkl'
+                    # default='/mnt/fs2/2019/Takamuro/db/i2w/sepalated_data.pkl'
                     )
 parser.add_argument('--estimator_path', type=str,
-                    default='/mnt/fs2/2019/Takamuro/m2_research/weather_transfer/cp/classifier_i2w_for_train_strict_sep/better_resnet101_10.pt')
+                    # default='/mnt/fs2/2019/Takamuro/m2_research/weather_transfer/cp/classifier_i2w_for_train_strict_sep/better_resnet101_10.pt'
+                    default='/mnt/fs2/2019/Takamuro/m2_research/weather_transfer/cp/estimator/est_res101_flicker-p03th1_sep-trian/better_est_resnet101_10_step12210.pt'
+                    )
 parser.add_argument('--input_size', type=int, default=224)
 parser.add_argument('--lr', type=float, default=1e-4)
 parser.add_argument('--lmda', type=float, default=None)
@@ -137,7 +139,7 @@ class WeatherTransfer(object):
 
         else:
             df = pd.read_pickle(args.pkl_path)
-            print('loaded {} data'.format(len(df)))
+            print('loaded {} signals data'.format(len(df)))
             pivot = int(len(df) * train_data_rate)
             df_shuffle = df.sample(frac=1)
             df_sep = {'train': df_shuffle[df_shuffle['mode'] == 'train'], 'test': df_shuffle[df_shuffle['mode'] == 'test']}
@@ -182,8 +184,8 @@ class WeatherTransfer(object):
         [i.cuda() for i in [self.inference, self.discriminator, self.estimator]]
 
         # Optimizer
-        self.g_opt = torch.optim.Adam(self.inference.parameters(), lr=args.lr, betas=(0.0, 0.999), weight_decay=args.lr/20)
-        self.d_opt = torch.optim.Adam(self.discriminator.parameters(), lr=args.lr, betas=(0.0, 0.999), weight_decay=args.lr/20)
+        self.g_opt = torch.optim.Adam(self.inference.parameters(), lr=args.lr, betas=(0.9, 0.999), weight_decay=args.lr/20)
+        self.d_opt = torch.optim.Adam(self.discriminator.parameters(), lr=args.lr, betas=(0.9, 0.999), weight_decay=args.lr/20)
 
         # これらのloaderにsamplerは必要ないのか？
         self.train_loader = torch.utils.data.DataLoader(
@@ -248,7 +250,7 @@ class WeatherTransfer(object):
         # Calc Generator Loss
         g_loss_adv = gen_hinge(fake_d_out)       # Adversarial loss
         g_loss_l1 = l1_loss(fake_out, images)
-        g_loss_w = pred_loss(fake_c_out, r_labels)   # Weather prediction
+        g_loss_w = pred_loss(fake_c_out, r_labels, one_hot=args.one_hot)   # Weather prediction
 
         # abs_loss = torch.mean(torch.abs(fake_out - images), [1, 2, 3])
         if args.supervised:
@@ -280,14 +282,14 @@ class WeatherTransfer(object):
             'io/train': torch.cat([images, fake_out], dim=3),
             })
 
-    def update_discriminator(self, images, labels):
+    def update_discriminator(self, images, labels, d_):
 
         # --- UPDATE(Discriminator) ---#
         self.d_opt.zero_grad()
 
         # for real
         if args.supervised:
-            pred_labels = labels
+            pred_labels = d_
         else:
             real_c_out = self.estimator(images)
             pred_labels = real_c_out.detach()
@@ -341,7 +343,7 @@ class WeatherTransfer(object):
             # loss_con_ = torch.mean(diff / (lmda + 1e-7))
 
             fake_out_li.append(fake_out_)
-            g_loss_adv_.append(adv_loss(fake_d_out_, self.real).item())
+            g_loss_adv_.append(gen_hinge(fake_d_out_).item())
             g_loss_l1_.append(l1_loss(fake_out_, images).item())
             g_loss_w_.append(pred_loss(fake_c_out_, ref_labels_expand).item())
             d_loss_.append(dis_hinge(fake_d_out_, real_d_out_).item())
@@ -419,7 +421,7 @@ class WeatherTransfer(object):
                 if images.size(0) != self.batch_size:
                     continue
 
-                self.update_discriminator(images, rand_labels)
+                self.update_discriminator(images, rand_labels, d_)
                 if self.global_step % args.GD_train_ratio == 0:
                     self.update_inference(images, rand_labels, d_)
 

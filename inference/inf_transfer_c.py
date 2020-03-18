@@ -16,9 +16,10 @@ parser.add_argument('--image_root', type=str,
 parser.add_argument('--pkl_path', type=str,
                     default='/mnt/fs2/2019/Takamuro/db/i2w/sepalated_data.pkl')
 parser.add_argument('--output_dir', '-o', type=str,
-                    default='/mnt/fs2/2019/takamuro/results/c_UNet/inf/c-flicker/i2w')
+                    default='/mnt/fs2/2019/Takamuro/m2_research/weather_transfer/results/c_UNet/inf/cUNet_w-c-i2w-res101_img-i2w-train_sampler_D1T1_supervised_wloss-crossent_e0000_s1000/i2w')
 parser.add_argument('--cp_path', type=str,
-                    default='/mnt/fs2/2018/matsuzaki/results/cp/transfer_class/i2w_res_aug_5_cls_n/i2w_res_aug_5_cls_n_e0026.pt')
+                    # default='/mnt/fs2/2018/matsuzaki/results/cp/transfer_class/i2w_res_aug_5_cls_n/i2w_res_aug_5_cls_n_e0026.pt')
+                    default='/mnt/fs2/2019/Takamuro/m2_research/weather_transfer/cp/cUNet_w-c-i2w-res101_img-i2w-train_sampler_D1T1_supervised_wloss-crossent_e0000_s1000.pt')
 parser.add_argument('--classifer_path', type=str,
                     default='/mnt/fs2/2019/Takamuro/m2_research/weather_transfer/cp/classifier_i2w_for_train_strict_sep/better_resnet101_10.pt')
 parser.add_argument('--input_size', type=int, default=224)
@@ -102,7 +103,7 @@ if __name__ == '__main__':
 
         [shutil.copy(_, args.output_dir) for _ in path]
         # _ = [shutil.copy(_, os.path.join(args.output_dir, 'out')) for _ in path]
-        [save_image(output, os.path.join(args.output_dir, '{}_'.format(path[j].split('/')[-1].split('.')[0]) + s_li[r_cls[j]] + '.png'), normalize=True) 
+        [save_image(output, os.path.join(args.output_dir, '{}_'.format(path[j].split('/')[-1].split('.')[0]) + s_li[r_cls[j]] + '.jpg'), normalize=True)
          for j, output in enumerate(out)]
         # [save_image(out[(r_cls == j)], os.path.join(args.output_dir, 'out', s_li[j]+'_{}.png'.format(i)), normalize=True) for j in range(5) if len((r_cls == j).nonzero()) != 0]
         # if i>20: exit()

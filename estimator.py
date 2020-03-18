@@ -11,7 +11,7 @@ parser.add_argument('--image_root', type=str,
                     default='/mnt/8THDD/takamuro/dataset/photos_usa_2016')
 parser.add_argument('--pkl_path', type=str,
                     default='/mnt/fs2/2019/okada/from_nitta/parm_0.3/sepalated_data.pkl')
-parser.add_argument('--save_path', type=str, default='cp/estimator')
+parser.add_argument('--save_path', type=str, default='cp/estimator/single')
 parser.add_argument('--name', type=str, default='noname-estimator')
 parser.add_argument('--gpu', type=str, default='0')
 parser.add_argument('--input_size', type=int, default=224)
@@ -185,6 +185,9 @@ for epoch in tqdm_iter:
 
     if epoch % save_per_epoch == 0:
         out_path = os.path.join(save_dir, 'est_resnet101_'+str(epoch)+'_step'+str(global_step)+'.pt')
-        torch.save(model, out_path)
+        if args.multi:
+            torch.save(model.module.state_dict(), out_path)
+        else:
+            torch.save(model, out_path)
 
 print('Done: training')
