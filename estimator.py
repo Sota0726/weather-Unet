@@ -22,7 +22,7 @@ parser.add_argument('--batch_size', '-bs', type=int, default=64)
 parser.add_argument('--num_workers', type=int, default=4)
 parser.add_argument('--mode', type=str, default='T', help='T(Train data) or E(Evaluate data)')
 parser.add_argument('--multi', action='store_true')
-
+parser.add_argument('--augmentation', action='store_true')
 args = parser.parse_args()
 
 os.environ['CUDA_DEVICE_ORDER'] = "PCI_BUS_ID"
@@ -56,19 +56,29 @@ os.makedirs(save_dir, exist_ok=True)
 df = pd.read_pickle(args.pkl_path)
 print('{} data were loaded'.format(len(df)))
 
-train_transform = transforms.Compose([
-    transforms.RandomRotation(10),
-    transforms.RandomResizedCrop(args.input_size),
-    transforms.RandomHorizontalFlip(),
-    transforms.ColorJitter(
-            brightness=0.5,
-            contrast=0.3,
-            saturation=0.3,
-            hue=0
-        ),
-    transforms.ToTensor(),
-    transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
-])
+
+if args.augmentation:
+    train_transform = transforms.Compose([
+        transforms.RandomRotation(10),
+        transforms.RandomResizedCrop(args.input_size),
+        transforms.RandomHorizontalFlip(),
+        transforms.ColorJitter(
+                brightness=0.5,
+                contrast=0.3,
+                saturation=0.3,
+                hue=0
+            ),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
+    ])
+else:
+    train_transform = transforms.Compose([
+        transforms.Resize((args.input_size,)*2),
+        transforms.RandomRotation(10),
+        transforms.RandomHorizontalFlip(),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
+    ])
 
 test_transform = transforms.Compose([
     transforms.Resize((args.input_size,)*2),

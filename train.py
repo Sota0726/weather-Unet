@@ -30,6 +30,7 @@ parser.add_argument('--w_clas_d_fli', action='store_true')
 parser.add_argument('--GD_train_ratio', type=int, default=1)
 parser.add_argument('--sampler', action='store_true')
 parser.add_argument('--supervised', action='store_true')
+parser.add_argument('--augmentation', action='store_true')
 args = parser.parse_args()
 
 # GPU Setting
@@ -76,19 +77,28 @@ class WeatherTransfer(object):
         self.fake = Variable_Float(0., self.batch_size)
         self.lmda = 0.
 
-        train_transform = transforms.Compose([
-            transforms.RandomRotation(10),
-            transforms.RandomResizedCrop(args.input_size),
-            transforms.RandomHorizontalFlip(),
-            transforms.ColorJitter(
-                    brightness=0.5,
-                    contrast=0.3,
-                    saturation=0.3,
-                    hue=0
-                ),
-            transforms.ToTensor(),
-            transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
-        ])
+        if args.augmentation:
+            train_transform = transforms.Compose([
+                transforms.RandomRotation(10),
+                transforms.RandomResizedCrop(args.input_size),
+                transforms.RandomHorizontalFlip(),
+                transforms.ColorJitter(
+                        brightness=0.5,
+                        contrast=0.3,
+                        saturation=0.3,
+                        hue=0
+                    ),
+                transforms.ToTensor(),
+                transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
+            ])
+        else:
+            train_transform = transforms.Compose([
+                transforms.Resize((args.input_size,)*2),
+                transforms.RandomRotation(10),
+                transforms.RandomHorizontalFlip(),
+                transforms.ToTensor(),
+                transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
+            ])
 
         test_transform = transforms.Compose([
             transforms.Resize((args.input_size,) * 2),
