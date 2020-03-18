@@ -11,12 +11,12 @@ parser.add_argument('--name', type=str, default='cUNet')
 parser.add_argument('--gpu', type=str, default='1')
 parser.add_argument('--save_dir', type=str, default='cp/transfer')
 parser.add_argument('--pkl_path', type=str,
-                    default='/mnt/fs2/2019/okada/from_nitta/parm_0.3/for_transfer-est_training.pkl'
-                    # default='/mnt/fs2/2019/Takamuro/db/i2w/sepalated_data.pkl'
+                    # default='/mnt/fs2/2019/okada/from_nitta/parm_0.3/for_transfer-est_training.pkl'
+                    default='/mnt/fs2/2019/Takamuro/db/i2w/sepalated_data.pkl'
                     )
 parser.add_argument('--estimator_path', type=str,
-                    # default='/mnt/fs2/2019/Takamuro/m2_research/weather_transfer/cp/classifier_i2w_for_train_strict_sep/better_resnet101_10.pt'
-                    default='/mnt/fs2/2019/Takamuro/m2_research/weather_transfer/cp/estimator/est_res101_flicker-p03th1_sep-trian/better_est_resnet101_10_step12210.pt'
+                    default='/mnt/fs2/2019/Takamuro/m2_research/weather_transfer/cp/classifier/i2w-classifier-res101-train-2020317/better_resnet101_epoch15_step59312.pt'
+                    # default='/mnt/fs2/2019/Takamuro/m2_research/weather_transfer/cp/estimator/est_res101_flicker-p03th1_sep-trian/better_est_resnet101_10_step12210.pt'
                     )
 parser.add_argument('--input_size', type=int, default=224)
 parser.add_argument('--lr', type=float, default=1e-4)
@@ -246,6 +246,7 @@ class WeatherTransfer(object):
             # real_res = self.discriminator(images, pred_labels)
         else:
             pred_labels = self.estimator(images).detach()
+            r_labels_ = r_labels
             # real_res = self.discriminator(images, pred_labels)
 
         # real_d_out = real_res[0]
@@ -265,7 +266,7 @@ class WeatherTransfer(object):
         # abs_loss = torch.mean(torch.abs(fake_out - images), [1, 2, 3])
         if args.supervised:
             diff = torch.mean(torch.abs(fake_out - images), [1, 2, 3])
-            lmda = torch.sum(torch.abs(pred_labels - r_labels), 1)
+            lmda = torch.mean(torch.abs(pred_labels - r_labels), 1)
             loss_con = torch.mean(diff / (lmda + 1e-2))  # Reconstraction loss
         else:
             diff = torch.mean(torch.abs(fake_out - images), [1, 2, 3])
@@ -433,7 +434,10 @@ class WeatherTransfer(object):
 
                 self.update_discriminator(images, rand_labels, d_)
                 if self.global_step % args.GD_train_ratio == 0:
-                    self.update_inference(images, rand_labels, d_, r_labels_=torch.argmax(self.estimator_(rand_images).detach(), dim=1))
+                    if args.w_clas_d_fli:
+                        self.update_inference(images, rand_labels, d_, r_labels_=torch.argmax(self.estimator_(rand_images).detach(), dim=1))
+                    else:
+                        self.update_inference(images, rand_labels, d_, r_labels_=r_)
 
                 # --- EVALUATION ---#
                 if (self.global_step % eval_per_step == 0) and not args.image_only:
