@@ -3,11 +3,7 @@ import os
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--image_root', type=str,
-<<<<<<< HEAD
-                    default='/mnt/8THDD/takamuro/dataset/photos_usa_2016'
-=======
                     default="/mnt/HDD8T/takamuro/dataset/photos_usa_2016/"
->>>>>>> 031b09aec0e8ef33fdf3666b46434590a8590594
                     # default='/mnt/fs2/2018/matsuzaki/dataset_fromnitta/Image/'
                     )
 parser.add_argument('--name', type=str, default='cUNet')
@@ -19,13 +15,8 @@ parser.add_argument('--pkl_path', type=str,
                     # default='/mnt/fs2/2019/Takamuro/db/i2w/sepalated_data.pkl'
                     )
 parser.add_argument('--estimator_path', type=str,
-<<<<<<< HEAD
                     # default='/mnt/fs2/2019/Takamuro/m2_research/weather_transfer/cp/classifier_i2w_for_train_strict_sep/better_resnet101_10.pt'
                     default='/mnt/fs2/2019/Takamuro/m2_research/weather_transfer/cp/estimator/est_res101_flicker-p03th1_sep-trian/better_est_resnet101_10_step12210.pt'
-=======
-                    default='/mnt/fs2/2019/Takamuro/m2_research/weather_transfer/cp/classifier_i2w_for_train_strict_sep/better_resnet101_10.pt'
-                    # default='/mnt/fs2/2019/Takamuro/m2_research/weather_transfer/cp/estimator/est_res101_flicker-p03th1_sep-trian/better_est_resnet101_10_step12210.pt')
->>>>>>> 031b09aec0e8ef33fdf3666b46434590a8590594
                     )
 parser.add_argument('--input_size', type=int, default=224)
 parser.add_argument('--lr', type=float, default=1e-4)

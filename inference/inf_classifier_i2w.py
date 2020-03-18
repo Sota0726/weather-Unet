@@ -20,11 +20,7 @@ parser.add_argument('--output_dir', type=str,
                     default='/mnt/fs2/2019/okada/from_nitta/parm_0.3/')
 # imb mean imbalanced
 parser.add_argument('--classifer_path', type=str,
-<<<<<<< HEAD
-                    default='/mnt/fs2/2019/Takamuro/temp/resnet101_95.pt')
-=======
                     default='/mnt/fs2/2019/Takamuro/m2_research/weather_transfer/cp/classifier_i2w_for_train_strict_sep/better_resnet101_10.pt')
->>>>>>> 031b09aec0e8ef33fdf3666b46434590a8590594
 # parser.add_argument('--classifer_path', type=str, default='cp/classifier/res_aug_5_cls/resnet101_95.pt')
 parser.add_argument('--input_size', type=int, default=224)
 parser.add_argument('--batch_size', type=int, default=10)
@@ -65,11 +61,7 @@ if __name__ == '__main__':
 
     cls_li = ['Clear', 'Clouds', 'Rain', 'Snow', 'Mist']
     if args.image_only:
-<<<<<<< HEAD
         paths = sorted(glob(os.path.join(args.image_root, '*.jpg')))
-=======
-        paths = glob(os.path.join(args.image_root, '*.png'))
->>>>>>> 031b09aec0e8ef33fdf3666b46434590a8590594
         print('loaded {} data'.format(len(paths)))
 
         df = pd.DataFrame.from_dict({'paths': [path.split('/')[-1] for path in paths]})
@@ -104,10 +96,6 @@ if __name__ == '__main__':
         print('not divisible by batch size')
         sys.exit()
 
-<<<<<<< HEAD
-
-=======
->>>>>>> 031b09aec0e8ef33fdf3666b46434590a8590594
     res_li = []
     print('{} itetates'.format(len(df) / bs))
     for i, data in tqdm(enumerate(loader)):
@@ -121,10 +109,5 @@ if __name__ == '__main__':
     for i, res in enumerate(all_res):
         df.iat[i, df.columns.get_loc('w_condition')] = cls_li[res[0]]
     print(df)
-<<<<<<< HEAD
     # df.to_pickle(os.path.join(args.output_dir, 'sep_with_est-label.pkl'))
     df.to_pickle(os.path.join(args.output_dir, 'check_result.pkl'))
-=======
-    df.to_pickle(os.path.join(args.output_dir, 'sep_with_est-label.pkl'))
-    # df.to_pickle(os.path.join(args.output_dir, 'check_result.pkl'))
->>>>>>> 031b09aec0e8ef33fdf3666b46434590a8590594
