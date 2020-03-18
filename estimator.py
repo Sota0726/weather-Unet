@@ -10,7 +10,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--image_root', type=str,
                     default='/mnt/8THDD/takamuro/dataset/photos_usa_2016')
 parser.add_argument('--pkl_path', type=str,
-                    default='/mnt/fs2/2019/okada/from_nitta/parm_0.3/sepalated_data.pkl')
+                    default='/mnt/fs2/2019/okada/from_nitta/parm_0.3/sepalated_data_wo-outlier.pkl')
 parser.add_argument('--save_path', type=str, default='cp/estimator/single')
 parser.add_argument('--name', type=str, default='noname-estimator')
 parser.add_argument('--gpu', type=str, default='0')
@@ -51,11 +51,6 @@ writer = SummaryWriter(comment=comment)
 
 save_dir = os.path.join(args.save_path, args.name)
 os.makedirs(save_dir, exist_ok=True)
-
-# load data
-df = pd.read_pickle(args.pkl_path)
-print('{} data were loaded'.format(len(df)))
-
 
 if args.augmentation:
     train_transform = transforms.Compose([
@@ -98,6 +93,19 @@ transform = {'train': train_transform, 'test': test_transform}
 # else:
 #     raise NotImplementedError
 
+# load data
+
+df = pd.read_pickle(args.pkl_path)
+print('{} data were loaded'.format(len(df)))
+
+# cols = ['clouds', 'temp', 'humidity', 'pressure', 'windspeed', 'rain']
+cols = ['clouds', 'temp', 'humidity', 'pressure', 'windspeed']
+
+df_ = df.loc[:, cols].fillna(0)
+df_mean = df_.mean()
+df_std = df_.std()
+df.loc[:, cols] = (df_ - df_mean) / df_std
+
 if args.mode == 'T':
     df_sep = {'train': df[df['mode'] == 'train'],
               'test': df[df['mode'] == 'test']}
@@ -107,8 +115,8 @@ elif args.mode == 'E':  # for evaluation
 else:
     raise NotImplementedError
 
-del df
-cols = ['clouds', 'temp', 'humidity', 'pressure', 'windspeed', 'rain']
+del df, df_
+
 loader = lambda s: FlickrDataLoader(args.image_root, df_sep[s],
                                     cols, transform[s])
 

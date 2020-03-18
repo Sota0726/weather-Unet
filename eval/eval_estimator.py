@@ -10,7 +10,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--gpu', type=str, default='1')
 parser.add_argument('--pkl_path', type=str,
                     default='/mnt/fs2/2019/okada/from_nitta/parm_0.3/for_transfer-est_training.pkl')
-parser.add_argument('--image_root', type=str, default="/mnt/HDD8T/takamuro/dataset/photos_usa_2016/")
+parser.add_argument('--image_root', type=str, default='/mnt/8THDD/takamuro/dataset/photos_usa_2016')
 parser.add_argument('--classifer_path', type=str,
                     default='/mnt/fs2/2019/Takamuro/m2_research/weather_transfer/cp/estimator/est_res101_flicker-p03th1_sep-val/est_resnet101_15_step17760.pt')
 parser.add_argument('--input_size', type=int, default=224)
