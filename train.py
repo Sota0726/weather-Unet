@@ -265,7 +265,7 @@ class WeatherTransfer(object):
         # Calc Generator Loss
         g_loss_adv = gen_hinge(fake_d_out)       # Adversarial loss
         g_loss_l1 = l1_loss(fake_out, images)
-        g_loss_w = pred_loss(fake_c_out, r_labels_, one_hot=args.one_hot)   # Weather prediction
+        g_loss_w = pred_loss(fake_c_out, r_labels, one_hot=False)   # Weather prediction, when one_hot = Ture w-loss is cross-ent, False w-loss is mse
 
         # abs_loss = torch.mean(torch.abs(fake_out - images), [1, 2, 3])
         if args.supervised:
@@ -432,23 +432,19 @@ class WeatherTransfer(object):
                     continue
 
                 if args.supervised:
-                    rand_labels = torch.eye(5)[r_].to('cuda')
+                    rand_labels = torch.eye(5)[r_].to('cuda')  # one_hot, r_ = [0~4]
                     d_ = torch.eye(5)[d_].to('cuda')
                     self.update_discriminator(images, rand_labels, d_)
                     if self.global_step % args.GD_train_ratio == 0:
                         self.update_inference(images, rand_labels, d_, r_)
                 else:
                     rand_labels = self.estimator(rand_images).detach()
-
-                if images.size(0) != self.batch_size:
-                    continue
-
-                self.update_discriminator(images, rand_labels, d_)
-                if self.global_step % args.GD_train_ratio == 0:
-                    if args.w_clas_d_fli:
-                        self.update_inference(images, rand_labels, d_, r_labels_=torch.argmax(self.estimator_(rand_images).detach(), dim=1))
-                    else:
-                        self.update_inference(images, rand_labels, d_, r_labels_=r_)
+                    self.update_discriminator(images, rand_labels)
+                    if self.global_step % args.GD_train_ratio == 0:
+                        if args.w_clas_d_fli:
+                            self.update_inference(images, rand_labels, d_, r_labels_=torch.argmax(self.estimator_(rand_images).detach(), dim=1))
+                        else:
+                            self.update_inference(images, rand_labels)
 
                 # --- EVALUATION ---#
                 if (self.global_step % eval_per_step == 0) and not args.image_only:
