@@ -83,7 +83,7 @@ train_loader = torch.utils.data.DataLoader(
 
 test_loader = torch.utils.data.DataLoader(
         test_set,
-        sampler=ImbalancedDatasetSampler(test_set),
+        # sampler=ImbalancedDatasetSampler(test_set),
         batch_size=args.batch_size,
         drop_last=True,
         num_workers=4)

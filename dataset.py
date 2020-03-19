@@ -124,7 +124,7 @@ class ClassImageLoader(Dataset):
         target = self.get_class(idx)
         if self.transform:
             image = self.transform(image)
-        return image, target  # , self.paths[idx]
+        return image, target # ,self.paths[idx]
 
 
 class ImageFolder(DatasetFolder):
