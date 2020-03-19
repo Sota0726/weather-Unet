@@ -32,8 +32,9 @@ class FlickrDataLoader(Dataset):
         self.columns = columns
         self.photo_id = df['photo'].to_list()
         self.class_id = class_id
-        df_ = df.loc[:, columns].fillna(0)
-        self.conditions = (df_ - df_.mean()) / df_.std()
+        # df_ = df.loc[:, columns].fillna(0)
+        # self.conditions = (df_ - df_.mean()) / df_.std()
+        self.conditions = df.loc[:, columns]
         if imbalance:
             self.labels = df['w_condition']
         else:
@@ -42,7 +43,7 @@ class FlickrDataLoader(Dataset):
         self.cls_li = ['Clear', 'Clouds', 'Rain', 'Snow', 'Mist']
         self.num_classes = len(columns)
         self.transform = transform
-        del df, df_
+        del df  # , df_
 
     def __len__(self):
         return len(self.photo_id)
@@ -72,10 +73,10 @@ class FlickrDataLoader(Dataset):
             return image, label
         elif self.class_id:
             cls_id = self.get_class(idx)
-            return image, label, cls_id
+            return image, cls_id, label
         else:
             cls_id = self.get_class(idx)
-            return image, cls_id, idx
+            return image, cls_id  # , idx
 
 class ImageLoader(Dataset):
     def __init__(self, paths, transform=None):
@@ -90,15 +91,19 @@ class ImageLoader(Dataset):
         try:
             image = Image.open(self.paths[idx])
         except:
+            print('load error{}'.format(self.paths[idx]))
             return self.__getitem__(idx)
         image = image.convert('RGB')
         if self.transform:
             image = self.transform(image)
+        # for train.py
         return image, True
+        # for inception_score.py
+        # return image
 
 
 class ClassImageLoader(Dataset):
-    def __init__(self, paths, transform=None):
+    def __init__(self, paths, transform=None, inf=None):
         # without z-other
         paths = [p for p in paths if 'z-other' not in p]
         # count dirs on root
@@ -110,6 +115,7 @@ class ClassImageLoader(Dataset):
         self.classes = files_dir
         self.num_classes = len(files_dir)
         self.transform = transform
+        self.inf = inf
 
     def get_class(self, idx):
         string = self.paths[idx].split('/')[-2]
@@ -124,7 +130,10 @@ class ClassImageLoader(Dataset):
         target = self.get_class(idx)
         if self.transform:
             image = self.transform(image)
-        return image, target # ,self.paths[idx]
+        if self.inf:
+            return image, target, self.paths[idx]
+        else:
+            return image, target
 
 
 class ImageFolder(DatasetFolder):

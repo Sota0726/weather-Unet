@@ -3,20 +3,21 @@ import os
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--image_root', type=str,
-                    # default="/mnt/fs2/2019/Takamuro/db/photos_usa_2016"
-                    default='/mnt/fs2/2018/matsuzaki/dataset_fromnitta/Image/'
+                    default="/mnt/HDD8T/takamuro/dataset/photos_usa_2016/"
+                    # default='/mnt/fs2/2018/matsuzaki/dataset_fromnitta/Image/'
                     )
 parser.add_argument('--name', type=str, default='cUNet')
 # Nmaing rule : cUNet_[c(classifier) or e(estimator)]_[detail of condition]_[epoch]_[step]
 parser.add_argument('--gpu', type=str, default='1')
 parser.add_argument('--save_dir', type=str, default='cp/transfer')
 parser.add_argument('--pkl_path', type=str,
-                    # default='/mnt/fs2/2019/okada/from_nitta/parm_0.3/sep_for_T-train.pkl'
+                    # default='/mnt/fs2/2019/okada/from_nitta/parm_0.3/for_transfer-est_training.pkl'
                     default='/mnt/fs2/2019/Takamuro/db/i2w/sepalated_data.pkl'
                     )
 parser.add_argument('--estimator_path', type=str,
-                    default='/mnt/fs2/2019/Takamuro/m2_research/weather_transfer/cp/classifier/classifier_i2w_for_train_strict_sep/better_resnet101_20.pt')
-                    # default='/mnt/fs2/2019/Takamuro/temp/resnet101_95.pt')
+                    default='/mnt/fs2/2019/Takamuro/m2_research/weather_transfer/cp/classifier/i2w-classifier-res101-train-2020317/better_resnet101_epoch15_step59312.pt'
+                    # default='/mnt/fs2/2019/Takamuro/m2_research/weather_transfer/cp/estimator/est_res101_flicker-p03th1_sep-trian/better_est_resnet101_10_step12210.pt'
+                    )
 parser.add_argument('--input_size', type=int, default=224)
 parser.add_argument('--lr', type=float, default=1e-4)
 parser.add_argument('--lmda', type=float, default=None)
@@ -29,6 +30,7 @@ parser.add_argument('--w_clas_d_fli', action='store_true')
 parser.add_argument('--GD_train_ratio', type=int, default=1)
 parser.add_argument('--sampler', action='store_true')
 parser.add_argument('--supervised', action='store_true')
+parser.add_argument('--augmentation', action='store_true')
 args = parser.parse_args()
 
 # GPU Setting
@@ -55,7 +57,6 @@ from dataset import ImageLoader, FlickrDataLoader, ClassImageLoader
 from sampler import ImbalancedDatasetSampler
 from cunet import Conditional_UNet
 from disc import SNDisc
-# from disc_update import SNDisc
 from utils import MakeOneHot
 
 
@@ -76,19 +77,28 @@ class WeatherTransfer(object):
         self.fake = Variable_Float(0., self.batch_size)
         self.lmda = 0.
 
-        train_transform = transforms.Compose([
-            transforms.RandomRotation(10),
-            transforms.RandomResizedCrop(args.input_size),
-            transforms.RandomHorizontalFlip(),
-            transforms.ColorJitter(
-                    brightness=0.5,
-                    contrast=0.3,
-                    saturation=0.3,
-                    hue=0
-                ),
-            transforms.ToTensor(),
-            transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
-        ])
+        if args.augmentation:
+            train_transform = transforms.Compose([
+                transforms.RandomRotation(10),
+                transforms.RandomResizedCrop(args.input_size),
+                transforms.RandomHorizontalFlip(),
+                transforms.ColorJitter(
+                        brightness=0.5,
+                        contrast=0.3,
+                        saturation=0.3,
+                        hue=0
+                    ),
+                transforms.ToTensor(),
+                transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
+            ])
+        else:
+            train_transform = transforms.Compose([
+                transforms.Resize((args.input_size,)*2),
+                transforms.RandomRotation(10),
+                transforms.RandomHorizontalFlip(),
+                transforms.ToTensor(),
+                transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
+            ])
 
         test_transform = transforms.Compose([
             transforms.Resize((args.input_size,) * 2),
@@ -142,7 +152,7 @@ class WeatherTransfer(object):
         else:
             print('flicker loader')
             df = pd.read_pickle(args.pkl_path)
-            print('loaded {} data'.format(len(df)))
+            print('loaded {} signals data'.format(len(df)))
             pivot = int(len(df) * train_data_rate)
             df_shuffle = df.sample(frac=1)
             df_sep = {'train': df_shuffle[df_shuffle['mode'] == 'train'], 'test': df_shuffle[df_shuffle['mode'] == 'test']}
@@ -177,8 +187,7 @@ class WeatherTransfer(object):
 
         self.estimator = torch.load(args.estimator_path)
         if args.one_hot:
-            self.estimator_ = self.estimator
-            self.estimator_.eval().cuda()
+            self.estimator_ = self.estimator.eval().cuda()
             self.estimator = nn.Sequential(
                         self.estimator,
                         nn.Softmax(dim=1)
@@ -430,9 +439,16 @@ class WeatherTransfer(object):
                         self.update_inference(images, rand_labels, d_, r_)
                 else:
                     rand_labels = self.estimator(rand_images).detach()
-                    self.update_discriminator(images, rand_labels)
-                    if self.global_step % args.GD_train_ratio == 0:
-                        self.update_inference(images, rand_labels)
+
+                if images.size(0) != self.batch_size:
+                    continue
+
+                self.update_discriminator(images, rand_labels, d_)
+                if self.global_step % args.GD_train_ratio == 0:
+                    if args.w_clas_d_fli:
+                        self.update_inference(images, rand_labels, d_, r_labels_=torch.argmax(self.estimator_(rand_images).detach(), dim=1))
+                    else:
+                        self.update_inference(images, rand_labels, d_, r_labels_=r_)
 
                 # --- EVALUATION ---#
                 if (self.global_step % eval_per_step == 0) and not args.image_only:
