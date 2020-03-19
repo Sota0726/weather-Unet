@@ -11,12 +11,10 @@ parser.add_argument('--name', type=str, default='cUNet')
 parser.add_argument('--gpu', type=str, default='1')
 parser.add_argument('--save_dir', type=str, default='cp/transfer')
 parser.add_argument('--pkl_path', type=str,
-                    # default='/mnt/fs2/2019/okada/from_nitta/parm_0.3/for_transfer-est_training.pkl'
-                    default='/mnt/fs2/2019/Takamuro/db/i2w/sepalated_data.pkl'
+                    default='/mnt/fs2/2019/okada/from_nitta/parm_0.3/sep_for_T-train-50test-images.pkl'
                     )
 parser.add_argument('--estimator_path', type=str,
-                    default='/mnt/fs2/2019/Takamuro/m2_research/weather_transfer/cp/classifier/i2w-classifier-res101-train-2020317/better_resnet101_epoch15_step59312.pt'
-                    # default='/mnt/fs2/2019/Takamuro/m2_research/weather_transfer/cp/estimator/est_res101_flicker-p03th1_sep-trian/better_est_resnet101_10_step12210.pt'
+                    default='/mnt/fs2/2019/Takamuro/m2_research/weather_transfer/cp/estimator/est_res101_flicker-p03th1_sep-trian/better_est_resnet101_10_step12210.pt'
                     )
 parser.add_argument('--input_size', type=int, default=224)
 parser.add_argument('--lr', type=float, default=1e-4)
@@ -24,13 +22,10 @@ parser.add_argument('--lmda', type=float, default=None)
 parser.add_argument('--num_epoch', type=int, default=100)
 parser.add_argument('--batch_size', type=int, default=16)
 parser.add_argument('--num_workers', type=int, default=4)
-parser.add_argument('--image_only', action='store_true')
-parser.add_argument('--one_hot', action='store_true')
-parser.add_argument('--w_clas_d_fli', action='store_true')
 parser.add_argument('--GD_train_ratio', type=int, default=1)
 parser.add_argument('--sampler', action='store_true')
-parser.add_argument('--supervised', action='store_true')
 parser.add_argument('--augmentation', action='store_true')
+parser.add_argument('--image_only', action='store_true')
 args = parser.parse_args()
 
 # GPU Setting
@@ -106,17 +101,8 @@ class WeatherTransfer(object):
             transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
         ])
 
-        if not args.one_hot:
-            self.cols = ['clouds', 'temp', 'humidity', 'pressure', 'windspeed', 'rain']
-            self.num_classes = len(self.cols)
-
-        elif args.w_clas_d_fli:
-            self.cols = ['clouds', 'temp', 'humidity', 'pressure', 'windspeed', 'rain']
-            self.num_classes = len(['sunny', 'cloudy', 'rain', 'snow', 'foggy'])
-
-        else:
-            self.cols = ['sunny', 'cloudy', 'rain', 'snow', 'foggy']
-            self.num_classes = len(self.cols)
+        self.cols = ['sunny', 'cloudy', 'rain', 'snow', 'foggy']
+        self.num_classes = len(self.cols)
 
         self.transform = {'train': train_transform, 'test': test_transform}
         self.train_set, self.test_set = self.load_data(varbose=True, image_only=args.image_only)
@@ -126,30 +112,16 @@ class WeatherTransfer(object):
     def load_data(self, varbose=False, image_only=False, train_data_rate=0.7):
 
         print('Start loading image files...')
-        if args.w_clas_d_fli:
-            df = pd.read_pickle(args.pkl_path)
-            print('loaded {} data'.format(len(df)))
-            pivot = int(len(df) * train_data_rate)
-            df_shuffle = df.sample(frac=1)
-            df_sep = {'train': df_shuffle[df_shuffle['mode'] == 'train'], 'test': df_shuffle[df_shuffle['mode'] == 'test']}
-            del df, df_shuffle
-            loader = lambda s: FlickrDataLoader(args.image_root, df_sep[s], self.cols, transform=self.transform[s], class_id=False, imbalance=args.sampler)
-
-        elif image_only:
+        if image_only:
             paths = glob(os.path.join(args.image_root, '*'))
             print('loaded {} data'.format(len(paths)))
             pivot = int(len(paths) * train_data_rate)
             paths_sep = {'train': paths[:pivot], 'test': paths[pivot:]}
             loader = lambda s: ImageLoader(paths_sep[s], transform=self.transform[s])
 
-        elif args.one_hot:
-            sep_data = pd.read_pickle(args.pkl_path)
-            loader = lambda s: ClassImageLoader(paths=sep_data[s], transform=self.transform[s])
-
         else:
             df = pd.read_pickle(args.pkl_path)
             print('loaded {} signals data'.format(len(df)))
-            pivot = int(len(df) * train_data_rate)
             df_shuffle = df.sample(frac=1)
             df_sep = {'train': df_shuffle[df_shuffle['mode'] == 'train'], 'test': df_shuffle[df_shuffle['mode'] == 'test']}
             del df, df_shuffle
@@ -182,12 +154,6 @@ class WeatherTransfer(object):
             self.global_step = 0
 
         self.estimator = torch.load(args.estimator_path)
-        if args.one_hot:
-            self.estimator_ = self.estimator.eval().cuda()
-            self.estimator = nn.Sequential(
-                        self.estimator,
-                        nn.Softmax(dim=1)
-                    )
         self.estimator.eval()
 
         # Models to CUDA
@@ -236,18 +202,13 @@ class WeatherTransfer(object):
         self.shift_lmda = lambda a, b: (1. - self.lmda) * a + self.lmda * b
         print('Build has been completed.')
 
-    def update_inference(self, images, r_labels, d_labels=None, r_labels_=None):
+    def update_inference(self, images, r_labels):
         # --- UPDATE(Inference) --- #
         self.g_opt.zero_grad()
 
         # for real
-        if args.supervised:
-            pred_labels = d_labels
-            # real_res = self.discriminator(images, pred_labels)
-        else:
-            pred_labels = self.estimator(images).detach()
-            r_labels_ = r_labels
-            # real_res = self.discriminator(images, pred_labels)
+        pred_labels = self.estimator(images).detach()
+        # real_res = self.discriminator(images, pred_labels)
 
         # real_d_out = real_res[0]
         # real_feat = real_res[3]
@@ -261,7 +222,7 @@ class WeatherTransfer(object):
         # Calc Generator Loss
         g_loss_adv = gen_hinge(fake_d_out)       # Adversarial loss
         g_loss_l1 = l1_loss(fake_out, images)
-        g_loss_w = pred_loss(fake_c_out, r_labels_, one_hot=args.one_hot)   # Weather prediction
+        g_loss_w = pred_loss(fake_c_out, r_labels)   # Weather prediction
 
         # abs_loss = torch.mean(torch.abs(fake_out - images), [1, 2, 3])
         if args.supervised:
@@ -293,17 +254,14 @@ class WeatherTransfer(object):
             'io/train': torch.cat([images, fake_out], dim=3),
             })
 
-    def update_discriminator(self, images, labels, d_=None):
+    def update_discriminator(self, images, labels):
 
         # --- UPDATE(Discriminator) ---#
         self.d_opt.zero_grad()
 
         # for real
-        if args.supervised:
-            pred_labels = d_
-        else:
-            real_c_out = self.estimator(images)
-            pred_labels = real_c_out.detach()
+        real_c_out = self.estimator(images)
+        pred_labels = real_c_out.detach()
 
         real_d_out_pred = self.discriminator(images, pred_labels)[0]
 
@@ -423,21 +381,14 @@ class WeatherTransfer(object):
                 images, d_ = (d.to('cuda') for d in data)
                 rand_images, r_ = (d.to('cuda') for d in rand_data)
 
-                if args.supervised:
-                    rand_labels = torch.eye(5)[r_].to('cuda')
-                    d_ = torch.eye(5)[d_].to('cuda')
-                else:
-                    rand_labels = self.estimator(rand_images).detach()
+                rand_labels = self.estimator(rand_images).detach()
 
                 if images.size(0) != self.batch_size:
                     continue
 
-                self.update_discriminator(images, rand_labels, d_)
+                self.update_discriminator(images, rand_labels)
                 if self.global_step % args.GD_train_ratio == 0:
-                    if args.w_clas_d_fli:
-                        self.update_inference(images, rand_labels, d_, r_labels_=torch.argmax(self.estimator_(rand_images).detach(), dim=1))
-                    else:
-                        self.update_inference(images, rand_labels, d_, r_labels_=r_)
+                    self.update_inference(images, rand_labels)
 
                 # --- EVALUATION ---#
                 if (self.global_step % eval_per_step == 0) and not args.image_only:
