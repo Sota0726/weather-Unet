@@ -3,16 +3,16 @@ import os
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--image_root', type=str,
-                    default="/mnt/HDD8T/takamuro/dataset/photos_usa_2016/"
-                    # default='/mnt/fs2/2018/matsuzaki/dataset_fromnitta/Image/'
+                    # default="/mnt/HDD8T/takamuro/dataset/photos_usa_2016/"
+                    default='/mnt/fs2/2018/matsuzaki/dataset_fromnitta/Image/'
                     )
 parser.add_argument('--name', type=str, default='cUNet')
 # Nmaing rule : cUNet_[c(classifier) or e(estimator)]_[detail of condition]_[epoch]_[step]
 parser.add_argument('--gpu', type=str, default='1')
 parser.add_argument('--save_dir', type=str, default='cp/transfer')
 parser.add_argument('--pkl_path', type=str,
-                    default='/mnt/fs2/2019/okada/from_nitta/parm_0.3/sep_for_T-train-50test-images.pkl'
-                    # default='/mnt/fs2/2019/Takamuro/db/i2w/sepalated_data.pkl'
+                    # default='/mnt/fs2/2019/okada/from_nitta/parm_0.3/sep_for_T-train-50test-images.pkl'
+                    default='/mnt/fs2/2019/Takamuro/db/i2w/sepalated_data.pkl'
                     )
 parser.add_argument('--estimator_path', type=str,
                     default='/mnt/fs2/2019/Takamuro/m2_research/weather_transfer/cp/classifier/i2w-classifier-res101-train-2020317/better_resnet101_epoch15_step59312.pt'
@@ -20,7 +20,7 @@ parser.add_argument('--estimator_path', type=str,
 parser.add_argument('--input_size', type=int, default=224)
 parser.add_argument('--lr', type=float, default=1e-4)
 parser.add_argument('--lmda', type=float, default=None)
-parser.add_argument('--num_epoch', type=int, default=100)
+parser.add_argument('--num_epoch', type=int, default=50)
 parser.add_argument('--batch_size', type=int, default=16)
 parser.add_argument('--num_workers', type=int, default=4)
 parser.add_argument('--image_only', action='store_true')
@@ -109,7 +109,7 @@ class WeatherTransfer(object):
         ])
 
         if args.dataset == 'i2w':
-            self.cols = ['clouds', 'temp', 'humidity', 'pressure', 'windspeed', 'rain']
+            self.cols = ['sunny', 'cloudy', 'rain', 'snow', 'foggy']
             self.num_classes = len(self.cols)
 
         elif args.dataset == 'flicker':
