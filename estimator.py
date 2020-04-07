@@ -98,7 +98,7 @@ df = pd.read_pickle(args.pkl_path)
 print('{} data were loaded'.format(len(df)))
 
 cols = ['clouds', 'temp', 'humidity', 'pressure', 'windspeed']
-# cols = ['clouds']
+# cols = ['temp']
 
 df_ = df[df['mode'] == 'train'].loc[:, cols].fillna(0)
 df_mean = df_.mean()
@@ -143,8 +143,12 @@ if not args.pre_trained:
     model = models.resnet101(pretrained=False, num_classes=num_classes)
 else:
     model = models.resnet101(pretrained=True)
-    for param in model.parameters():
-        param.requires_grad = False
+    ct = 0
+    for child in model.children():
+        ct += 1
+        if ct < 8:
+            for param in child.parameters():
+                param.requires_grad = False
     num_features = model.fc.in_features
     model.fc = nn.Linear(num_features, num_classes)
 
@@ -156,7 +160,7 @@ if args.multi:
 opt = torch.optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.wd)
 
 # criterion = nn.MSELoss()
-criterion = nn.L1Loss()
+criterion = nn.L1Loss(reduction='none')
 
 eval_per_iter = 100
 save_per_epoch = 5
@@ -177,8 +181,9 @@ for epoch in tqdm_iter:
         opt.zero_grad()
         outputs = model(inputs)
         loss = criterion(outputs, labels)
-
-        loss.backward()
+        loss = torch.mean(loss, dim=0)
+        gradients = torch.FloatTensor([0.001, 1.0, 0.0001, 0.01, 0.1]).to('cuda')
+        loss.backward(gradients)
         opt.step()
 
         # diff_l1 = l1_loss(outputs.detach(), labels)
