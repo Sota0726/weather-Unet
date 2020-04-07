@@ -23,6 +23,7 @@ parser.add_argument('--num_workers', type=int, default=64)
 parser.add_argument('--mode', type=str, default='T', help='T(Train data) or E(Evaluate data)')
 parser.add_argument('--multi', action='store_true')
 parser.add_argument('--augmentation', action='store_true')
+parser.add_argument('--pre_trained', action='store_true')
 args = parser.parse_args()
 
 os.environ['CUDA_DEVICE_ORDER'] = "PCI_BUS_ID"
@@ -96,10 +97,10 @@ transform = {'train': train_transform, 'test': test_transform}
 df = pd.read_pickle(args.pkl_path)
 print('{} data were loaded'.format(len(df)))
 
-# cols = ['clouds', 'temp', 'humidity', 'pressure', 'windspeed', 'rain']
 cols = ['clouds', 'temp', 'humidity', 'pressure', 'windspeed']
+# cols = ['clouds']
 
-df_ = df.loc[:, cols].fillna(0)
+df_ = df[df['mode'] == 'train'].loc[:, cols].fillna(0)
 df_mean = df_.mean()
 df_std = df_.std()
 df.loc[:, cols] = (df_ - df_mean) / df_std
@@ -114,6 +115,7 @@ else:
     raise NotImplementedError
 
 del df, df_
+print('{} train data were loaded'.format(len(df_sep['train'])))
 
 loader = lambda s: FlickrDataLoader(args.image_root, df_sep[s],
                                     cols, transform[s])
@@ -137,7 +139,15 @@ test_loader = torch.utils.data.DataLoader(
 
 num_classes = train_set.num_classes
 
-model = models.resnet101(pretrained=False, num_classes=num_classes)
+if not args.pre_trained:
+    model = models.resnet101(pretrained=False, num_classes=num_classes)
+else:
+    model = models.resnet101(pretrained=True)
+    for param in model.parameters():
+        param.requires_grad = False
+    num_features = model.fc.in_features
+    model.fc = nn.Linear(num_features, num_classes)
+
 model.cuda()
 if args.multi:
     model = nn.DataParallel(model)
