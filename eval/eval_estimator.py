@@ -14,7 +14,7 @@ parser.add_argument('--pkl_path', type=str,
                     default='/mnt/fs2/2019/okada/from_nitta/parm_0.3/sepalated_data_wo-outlier.pkl')
 parser.add_argument('--image_root', type=str, default='/mnt/8THDD/takamuro/dataset/photos_usa_2016')
 parser.add_argument('--classifer_path', type=str,
-                    default='cp/estimator/single/est_res101_flicker-p03th01-WoOutlier_sep-train_aug_pre_loss-l1/est_resnet101_10_step11880.pt')
+                    default='cp/estimator/single/est_res101_flicker-p03th01-WoOutlier_sep-train_aug_pre_loss-mse-reduction-none-grad-all-1/est_resnet101_50_step55080.pt')
 parser.add_argument('--input_size', type=int, default=224)
 parser.add_argument('--batch_size', type=int, default=16)
 parser.add_argument('--num_workers', type=int, default=4)
@@ -36,7 +36,7 @@ def make_matricx_img(df, pred, col):
     dir_name = '/mnt/fs2/2019/Takamuro/db/photos_usa_2016/'
     temp_df = df
     temp = pred
-    print(temp.shape)
+    # print(temp.shape)
     print('{} gt range is {} ~ {}'.format(col, min(df[col]), max(df[col])))
     print('range is {} ~ {}'.format(np.min(temp), np.max(temp)))
     bins = np.linspace(np.min(temp), np.max(temp), 11)
@@ -82,7 +82,9 @@ if __name__ == '__main__':
     # df = df[:len(df)//2]  # test data
     # df_li = [df[df.condition2 == c _li[i]].sort_values('ent_label')[:100] for i in range(5)]
     # df = pd.concat(df_li)
-    save_path = os.path.join('temp-check_est', 'temp_only-est')
+    save_path = os.path.join('/mnt/fs2/2019/Takamuro/m2_research/weather_transfer/results/eval_estimator',
+                             args.classifer_path.split('/')[-2],
+                             'e' + args.classifer_path.split('/')[-1].split('_')[-2])
     os.makedirs(save_path, exist_ok=True)
 
     df = df_ori[df_ori['mode'] == 'train']
@@ -92,11 +94,11 @@ if __name__ == '__main__':
     df_ = df.loc[:, cols].fillna(0)
     df_mean = df_.mean()
     df_std = df_.std()
-    # df = df_ori[df_ori['mode'] == 'test']
+    df = df_ori[df_ori['mode'] == 'test']
     df.loc[:, cols] = (df.loc[:, cols].fillna(0) - df_mean) / df_std
-    # for col in cols:
-    #     tab_img = make_matricx_img(df, df[col].tolist(), col)
-    #     tab_img.save('gt_{}.jpg'.format(col))
+    for col in cols:
+        tab_img = make_matricx_img(df, df[col].tolist(), col)
+        tab_img.save('gt_{}.jpg'.format(col))
 
     print('loaded {} data'.format(len(df)))
 
@@ -126,6 +128,8 @@ if __name__ == '__main__':
     av_l1_li = np.empty((0, len(cols)))
     l1_li = np.empty((0, len(cols)))
     pred_li = np.empty((0, len(cols)))
+    mse_li = np.empty((0, len(cols)))
+    av_mse_li = np.empty((0, len(cols)))
 
     # vec_li = []
     for i, data in tqdm(enumerate(loader), total=len(df) // bs):
@@ -133,32 +137,41 @@ if __name__ == '__main__':
         signals = data[1].to('cuda')
         pred = classifer(batch).detach()
 
-        l1_ = F.l1_loss(pred, signals)
-        mse_ = F.mse_loss(pred, signals)
+        # l1_ = F.l1_loss(pred, signals)
+        mse = F.mse_loss(pred, signals, reduction='none')
         # l1 = torch.mean(torch.abs(pred - signals), dim=0)
         l1 = torch.abs(pred - signals)
 
         if len(cols) == 1:
             pred_li = np.append(pred_li, pred.cpu().numpy().reshape(bs, -1))
             l1_li = np.append(l1_li, l1.cpu().numpy().reshape(bs, -1))
-            av_l1_li = np.append(l1_li, torch.mean(l1).cpu().numpy().reshape(1, -1))
+            mse_li = np.append(mse_li, mse.cpu().numpy().reshape(bs, -1))
+            av_l1_li = np.append(av_l1_li, torch.mean(l1).cpu().numpy().reshape(1, -1))
+            av_mse_li = np.append(av_mse_li, torch.mean(mse).cpu().numpy().reshape(1, -1))
         else:
             pred_li = np.append(pred_li, pred.cpu().numpy().reshape(bs, -1), axis=0)
             l1_li = np.append(l1_li, l1.cpu().numpy().reshape(bs, -1), axis=0)
-            av_l1_li = np.append(l1_li, torch.mean(l1, dim=0).cpu().numpy().reshape(1, -1), axis=0)
+            mse_li = np.append(mse_li, mse.cpu().numpy().reshape(bs, -1), axis=0)
+            av_l1_li = np.append(av_l1_li, torch.mean(l1, dim=0).cpu().numpy().reshape(1, -1), axis=0)
+            av_mse_li = np.append(av_mse_li, torch.mean(mse, dim=0).cpu().numpy().reshape(1, -1), axis=0)
 
     ave_l1 = np.mean(av_l1_li, axis=0)
-
-    with open('l1.pkl', 'wb') as f:
+    ave_mse = np.mean(av_mse_li, axis=0)
+    with open(os.path.join(save_path, 'l1.pkl'), 'wb') as f:
         pickle.dump(l1_li, f)
-    with open('pred.pkl', 'wb') as f:
+    with open(os.path.join(save_path, 'pred.pkl'), 'wb') as f:
         pickle.dump(pred_li, f)
+    with open(os.path.join(save_path, 'mse.pkl'), 'wb') as f:
+        pickle.dump(mse_li, f)
     # with open('.pkl', 'wb') as f:
     #     pickle.dump(df, f)
 
     print(cols)
+    print('l1')
     print(ave_l1)
     print(ave_l1 * df_std)
+    print('mse')
+    print(ave_mse)
 
     # tab_img = make_matricx_img(df, pred_li[:,0])
     if len(cols) == 1:
@@ -167,6 +180,6 @@ if __name__ == '__main__':
         plot_hist(cols[0], df, l1_li, pred_li)
     else:
         for i, col in enumerate(cols):
-            tab_img = make_matricx_img(df, pred_li[i], col)
+            tab_img = make_matricx_img(df, pred_li[:, i], col)
             tab_img.save(os.path.join(save_path, 'est_{}.jpg'.format(col)))
-            plot_hist(col, df, l1_li[i], pred_li[i])
+            plot_hist(col, df, l1_li[:, i], pred_li[:, i])

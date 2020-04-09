@@ -159,8 +159,8 @@ if args.multi:
 # train setting
 opt = torch.optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.wd)
 
-# criterion = nn.MSELoss()
-criterion = nn.L1Loss(reduction='none')
+criterion = nn.MSELoss(reduction='none')
+# criterion = nn.L1Loss(reduction='none')
 
 eval_per_iter = 100
 save_per_epoch = 5
@@ -182,7 +182,7 @@ for epoch in tqdm_iter:
         outputs = model(inputs)
         loss = criterion(outputs, labels)
         loss = torch.mean(loss, dim=0)
-        gradients = torch.FloatTensor([0.001, 1.0, 0.0001, 0.01, 0.1]).to('cuda')
+        gradients = torch.FloatTensor([1.0, 1.0, 1.0, 1.0, 1.0]).to('cuda')
         loss.backward(gradients)
         opt.step()
 
