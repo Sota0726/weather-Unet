@@ -8,7 +8,7 @@ from tqdm import trange
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--image_root', type=str,
-                    default='/mnt/8THDD/takamuro/dataset/photos_usa_2016')
+                    default='/mnt/HDD8T/takamuro/dataset/photos_usa_2016')
 parser.add_argument('--pkl_path', type=str,
                     default='/mnt/fs2/2019/okada/from_nitta/parm_0.3/sepalated_data_wo-outlier.pkl')
 parser.add_argument('--save_path', type=str, default='cp/estimator/single')
@@ -132,7 +132,7 @@ train_loader = torch.utils.data.DataLoader(
 
 test_loader = torch.utils.data.DataLoader(
         test_set,
-        #sampler=ImbalancedDatasetSampler(test_set),
+        # sampler=ImbalancedDatasetSampler(test_set),
         drop_last=True,
         batch_size=args.batch_size,
         num_workers=args.num_workers)

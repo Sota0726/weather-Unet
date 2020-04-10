@@ -11,18 +11,18 @@ from glob import glob
 from torchvision.utils import save_image
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--gpu', type=str, default='1')
+parser.add_argument('--gpu', type=str, default='3')
 parser.add_argument('--image_root', type=str,
                     default='/mnt/fs2/2018/matsuzaki/dataset_fromnitta/Image/')
 parser.add_argument('--pkl_path', type=str,
-                    default='/mnt/fs2/2019/Takamuro/m2_research/i2w/for_tabel_test.pkl')
+                    default='/mnt/fs2/2019/Takamuro/m2_research/i2w/sepalated_data.pkl')
 parser.add_argument('--output_dir', '-o', type=str,
-                    default='/mnt/fs2/2019/Takamuro/m2_research/weather_transfer/results/c_UNet/inf/'
-                    'cUNet_w-c-res101-0317_img-i2w_train-D1T1_aug_supervised_shuffle_adam-b1-09_wloss_CrossEnt_e0032_s121000/i2w')
+                    default='/mnt/fs2/2019/Takamuro/m2_research/weather_transfer/results/eval_class_transfer/'
+                    'cUNet_w-c-res101-0317_img-i2w_train-D1T1_aug_supervised_shuffle_adam-b1-09_wloss_CrossEnt_e0035_s132000/out')
 parser.add_argument('--cp_path', type=str,
-                    default='/mnt/HDD8T/takamuro/m2/weather-Unet/cp/transfer/'
-                    'cUNet_w-c-res101-0317_img-i2w_train-D1T1_aug_supervised_shuffle_adam-b1-09_wloss_CrossEnt/cUNet_w-c-res101-0317_img-i2w_train-D1T1_aug_supervised_shuffle_adam-b1-09_wloss_CrossEnt_e0032_s121000.pt')
-                    # default='/mnt/fs2/2019/Takamuro/m2_research/weather_transfer/cp/cUNet_w-c-res101-0317_img-i2w_train-D1T1_adam-b1-00_aug_sampler_supervised_wloss-CrossEnt_e0032_s121000.pt')
+                    default='/mnt/fs2/2019/Takamuro/m2_research/weather_transfer/cp/transfer/'
+                    # 'cUNet_w-c-res101-0317_img-flicker-200k_aug_shuffle_adam-b1-09_wloss-CrossEnt/cUNet_w-c-res101-0317_img-flicker-200k_aug_shuffle_adam-b1-09_wloss-CrossEnt_e0025_s324000.pt')
+                    'cUNet_w-c-res101-0317_img-i2w_train-D1T1_adam-b1-00_aug_sampler_supervised_wloss-CrossEnt/cUNet_w-c-res101-0317_img-i2w_train-D1T1_aug_supervised_shuffle_adam-b1-09_wloss_CrossEnt_e0035_s132000.pt')
 parser.add_argument('--classifer_path', type=str,
                     default='/mnt/fs2/2019/Takamuro/m2_research/weather_transfer/cp/classifier/i2w-classifier-res101-train-2020317/better_resnet101_epoch15_step59312.pt')
 parser.add_argument('--input_size', type=int, default=224)
@@ -74,13 +74,14 @@ if __name__ == '__main__':
     loader = torch.utils.data.DataLoader(
             dataset,
             batch_size=args.batch_size,
-            num_workers=args.num_workers
+            num_workers=args.num_workers,
+            drop_last=True
             )
     random_loader = torch.utils.data.DataLoader(
             dataset,
             batch_size=args.batch_size,
             num_workers=args.num_workers,
-            shuffle=True
+            drop_last=True
             )
 
     # load model
@@ -88,14 +89,17 @@ if __name__ == '__main__':
     sd = torch.load(args.cp_path)
     transfer.load_state_dict(sd['inference'])
 
-    classifer = torch.load(args.classifer_path)
-    classifer.eval()
+    # classifer = torch.load(args.classifer_path)
+    # classifer.eval()
 
     # if args.gpu > 0:
     transfer.cuda()
-    classifer.cuda()
+    # classifer.cuda()
 
     bs = args.batch_size
+
+    labels = torch.as_tensor(np.arange(args.num_classes, dtype=np.int64))
+    onehot = torch.eye(args.num_classes)[labels].to('cuda')
 
     cls_li = []
     vec_li = []
@@ -103,21 +107,21 @@ if __name__ == '__main__':
 
     for k, (data, rnd) in tqdm(enumerate(zip(loader, random_loader)), total=len(sep_data)//bs):
         batch = data[0].to('cuda')
+        ori_label = data[1]
         r_batch = rnd[0].to('cuda')
-        c_batch = rnd[1].to('cuda')
-        r_cls = c_batch
-        c_batch = F.one_hot(c_batch, args.num_classes).float()
         path = data[2]
-        # [shutil.copy(_, args.output_dir) for _ in path]
-        [save_image(img, os.path.join(args.output_dir, _.split('/')[-1]), normalize=True) for _, img in zip(path, batch)]
+        # [save_image(img, os.path.join(args.output_dir, _.split('/')[-1]), normalize=True) for _, img in zip(path, batch)]
         for i in range(bs):
-            ref_labels_expand = torch.cat([c_batch[i]] * bs).view(-1, args.num_classes)
-            out = transfer(batch, ref_labels_expand)
-            out_li.append(out)
-            [save_image(output, os.path.join(args.output_dir, '{}_'.format(path[j].split('/')[-1].split('.')[0]) + s_li[r_cls[i]] + '.jpg'), normalize=True)
-             for j, output in enumerate(out)]
-        res = make_table_img(batch, r_batch, out_li)
-        save_image(res, os.path.join(args.output_dir, 'summary_results_{}.jpg'.format(str(k))), normalize=True)
+            with torch.no_grad():
+                ref_labels_expand = torch.cat([onehot[i]] * bs).view(-1, args.num_classes)
+                out = transfer(batch, ref_labels_expand)
+                out_li.append(out)
+                [save_image(output, os.path.join(args.output_dir,
+                 '{}_{}_{}'.format(s_li[ori_label[j]], path[j].split('/')[-1].split('.')[0], s_li[torch.argmax(onehot[i]).to('cpu')]) + '.jpg'), normalize=True)
+                 for j, output in enumerate(out)]
+        # res = make_table_img(batch, r_batch, out_li)
+        # save_image(res, os.path.join(args.output_dir, 'summary_results_{}.jpg'.format(str(k))), normalize=True)
+        out_li = []
 
     # for i, (data, rnd) in tqdm(enumerate(zip(loader, random_loader)), total=len(sep_data)//bs):
     #     batch = data[0].to('cuda')

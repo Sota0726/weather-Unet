@@ -17,15 +17,17 @@ parser.add_argument('--gpu', type=int, default=1)
 parser.add_argument('--image_root', type=str,
                     default='/mnt/fs2/2018/matsuzaki/dataset_fromnitta/Image/')
 parser.add_argument('--pkl_path', type=str,
-                    default='/mnt/data2/matsuzaki/repo/data/sepalated_data.pkl')
+                    default='/mnt/fs2/2019/Takamuro/m2_research/i2w/sepalated_data.pkl')
 parser.add_argument('--output_dir', '-o', type=str,
-                    default='/mnt/fs2/2019/takamuro/results/c_UNet/eval_class_transfer')
+                    default='/mnt/fs2/2019/Takamuro/m2_research/weather_transfer/results/eval_class_transfer')
 parser.add_argument('--cp_path', type=str,
-                    default='/mnt/fs2/2018/matsuzaki/results/cp/transfer_class/i2w_res_aug_5_cls_n/i2w_res_aug_5_cls_n_e0026.pt')
+                    default='/mnt/fs2/2019/Takamuro/m2_research/weather_transfer/cp/transfer/'
+                    'cUNet_w-c-res101-0317_img-i2w_train-D1T1_aug_supervised_shuffle_adam-b1-09_wloss_CrossEnt/cUNet_w-c-res101-0317_img-i2w_train-D1T1_aug_supervised_shuffle_adam-b1-09_wloss_CrossEnt_e0035_s132000.pt')
+                    # 'cUNet_w-c-res101-0317_img-flicker-200k_aug_shuffle_adam-b1-09_wloss-CrossEnt/cUNet_w-c-res101-0317_img-flicker-200k_aug_shuffle_adam-b1-09_wloss-CrossEnt_e0025_s324000.pt')
 parser.add_argument('--classifer_path', type=str,
-                    default='/mnt/fs2/2018/matsuzaki/results/cp/classifier/i2w_res101_val_n/resnet101_95.pt')
+                    default='/mnt/fs2/2019/Takamuro/m2_research/weather_transfer/cp/classifier/cls_res101_i2w_sep-val_aug_20200408/resnet101_epoch20_step77847.pt')
 parser.add_argument('--input_size', type=int, default=224)
-parser.add_argument('--batch_size', type=int, default=16)
+parser.add_argument('--batch_size', type=int, default=5)
 parser.add_argument('--num_workers', type=int, default=8)
 parser.add_argument('--num_classes', type=int, default=5)
 
@@ -46,36 +48,32 @@ from sampler import ImbalancedDatasetSampler
 from cunet import Conditional_UNet
 
 if __name__ == '__main__':
-    s_li = ['sunny', 'cloudy', 'rain', 'snow', 'foggy']
-    os.makedirs(args.output_dir, exist_ok=True)
-    df = pd.read_pickle(args.pkl_path)
-    df = df['test']
-    ind_li = []
-    for s in s_li:
-        ind_li.append([i for i, c in enumerate(p.split('/')[-2] for p in df) if c == s])
-    ind_li = np.concatenate([ind[:91] for ind in ind_li])
-    print(ind_li.shape)
-    df = [df[i] for i in ind_li]
-    print('loaded {} data'.format(len(df)))
-
     transform = transforms.Compose([
         transforms.Resize((args.input_size,)*2),
         transforms.ToTensor(),
         transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
     ])
 
-    dataset = ClassImageLoader(paths=df, transform=transform)
+    s_li = ['sunny', 'cloudy', 'rain', 'snow', 'foggy']
+    os.makedirs(args.output_dir, exist_ok=True)
+    sep_data = pd.read_pickle(args.pkl_path)
+    sep_data = sep_data['test']
+    # sep_data = [p for p in sep_data if 'foggy' in p]
+    print('loaded {} data'.format(len(sep_data)))
+
+    dataset = ClassImageLoader(paths=sep_data, transform=transform, inf=True)
 
     loader = torch.utils.data.DataLoader(
             dataset,
             batch_size=args.batch_size,
-            num_workers=args.num_workers
+            num_workers=args.num_workers,
+            drop_last=True
             )
     random_loader = torch.utils.data.DataLoader(
             dataset,
             batch_size=args.batch_size,
             num_workers=args.num_workers,
-            shuffle=True
+            drop_last=True
             )
 
     # load model
@@ -86,51 +84,50 @@ if __name__ == '__main__':
     classifer = torch.load(args.classifer_path)
     classifer.eval()
 
-    if args.gpu > 0:
-        transfer.cuda()
-        classifer.cuda()
+    transfer.cuda()
+    classifer.cuda()
 
     bs = args.batch_size
+    labels = torch.as_tensor(np.arange(args.num_classes, dtype=np.int64))
+    onehot = torch.eye(args.num_classes)[labels].to('cuda')
 
     cls_li = []
     vec_li = []
-    for i, (data, rnd) in tqdm(enumerate(zip(loader, random_loader)), total= len(df)//bs):
+
+    for data, rnd in tqdm(zip(loader, random_loader), total=len(sep_data)//bs):
         batch = data[0].to('cuda')
-        r_batch = rnd[0].to('cuda')
-        c_batch = rnd[1].to('cuda')
-        r_cls = c_batch
-        c_batch = F.one_hot(c_batch, args.num_classes).float()
-        # r_cls = torch.argmax(classifer(r_batch).detach(), 1)
-        out = transfer(batch, c_batch)
+        # r_batch = rnd[0].to('cuda')
+        # c_batch = rnd[1].to('cuda')
+        # r_cls = c_batch
+        # c_batch = F.one_hot(c_batch, args.num_classes).float()
+        for i in range(bs):
+            with torch.no_grad():
+                ref_labels_expand = torch.cat([onehot[i]] * bs).view(-1, args.num_classes)
+                out = transfer(batch, ref_labels_expand)
 
-        # for check output
-        # add "return image, target, self.paths[idx]" to __getitem__ of ClassImageLoader
-        path = data[2]
-        for _ in path:
-            shutil.copy(_, os.path.join(args.output_dir, 'out'))
-        # _ = [shutil.copy(_, os.path.join(args.output_dir, 'out')) for _ in path]
-        [save_image(output, os.path.join(args.output_dir, 'out',
-                    '{}_'.format(path[j].split('/')[-1].split('.')[0])
-                                 + s_li[r_cls[j]] + '.png'),
-                    normalize=True)
-            for j, output in enumerate(out)]
- 
-        # [save_image(out[(r_cls == j)], os.path.join(args.output_dir, 'out', s_li[j]+'_{}.png'.format(i)), normalize=True) for j in range(5) if len((r_cls == j).nonzero()) != 0]
-        # if i>20: exit()
+                c_preds = torch.argmax(classifer(out).detach(), 1)
+                r_cls = torch.argmax(ref_labels_expand, 1)
 
-        c_preds = torch.argmax(classifer(out).detach(), 1)
-        cls_li.append(torch.cat([r_cls.int().cpu().view(r_cls.size(0), -1),
-                                c_preds.int().cpu().view(c_preds.size(0), -1)], 1))
+                cls_li.append(torch.cat([r_cls.int().cpu().view(r_cls.size(0), -1),
+                              c_preds.int().cpu().view(c_preds.size(0), -1)], 1))
+
+                # cls_li.append(torch.cat([r_cls.int().cpu().view(r_cls.size(0), -1),
+                #                 c_preds.int().cpu().view(c_preds.size(0), -1)], 1))
+
     all_res = torch.cat(cls_li, 0).numpy()
+    print(all_res)
+    print(all_res.shape)
     y_true, y_pred = (all_res[:, 0], all_res[:, 1])
-
     table = classification_report(y_true, y_pred)
-
     print(table)
+
+    output_path = os.path.join(args.output_dir, args.cp_path.split('/')[-1].split('.')[0])
+    os.makedirs(output_path, exist_ok=True)
+
     matrix = confusion_matrix(y_true, y_pred, labels=np.arange(len(s_li)))
     df = pd.DataFrame(data=matrix, index=s_li, columns=s_li)
-    df.to_pickle(os.path.join(args.output_dir, 'cm.pkl'))
+    df.to_pickle(os.path.join(output_path, 'cm.pkl'))
 
     plot = sns.heatmap(df, square=True, annot=True, fmt='d')
     fig = plot.get_figure()
-    fig.savefig(os.path.join(args.output_dir, 'pr_table.png'))
+    fig.savefig(os.path.join(output_path, 'pr_table_20200408.png'))

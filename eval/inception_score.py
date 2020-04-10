@@ -10,9 +10,9 @@ parser.add_argument('--gpu', type=str, default='1')
 parser.add_argument('--image_root', type=str,
                     default='/mnt/fs2/2018/matsuzaki/dataset_fromnitta/Image/')
 parser.add_argument('--input_path', type=str,
-                    default='/mnt/fs2/2019/Takamuro/db/i2w/test_images/')
+                    default='/mnt/fs2/2019/Takamuro/db/i2w/2500_test_images_224x224/')
 parser.add_argument('--input_size', type=int, default=224)
-parser.add_argument('--batch_size', type=int, default=16)
+parser.add_argument('--batch_size', type=int, default=5)
 parser.add_argument('--num_workers', type=int, default=4)
 args = parser.parse_args()
 
@@ -41,7 +41,7 @@ def inception_score(imgs, cuda=True, batch_size=32, resize=False, splits=1):
     splits -- number of splits
     """
     N = len(imgs)
-
+    print(N)
     assert batch_size > 0
     assert N > batch_size
 
@@ -59,10 +59,10 @@ def inception_score(imgs, cuda=True, batch_size=32, resize=False, splits=1):
             batch_size=args.batch_size,
             num_workers=args.num_workers
             )
-    print('1')
+    print('inception model loading')
     # Load inception model
     inception_model = inception_v3(pretrained=True, transform_input=False).type(dtype)
-    print('2')
+    print('finish loading')
     inception_model.eval()
     up = nn.Upsample(size=(299, 299), mode='bilinear').type(dtype)
 
@@ -76,7 +76,8 @@ def inception_score(imgs, cuda=True, batch_size=32, resize=False, splits=1):
     preds = np.zeros((N, 1000))
 
     for i, batch_ in enumerate(dataloader, 0):
-        batch = batch_.type(dtype)
+        batch = batch_[0].type(dtype)
+        # batch = batch_.to('cuda')
         batchv = Variable(batch)
         batch_size_i = batch.size()[0]
 
@@ -98,7 +99,7 @@ def inception_score(imgs, cuda=True, batch_size=32, resize=False, splits=1):
 
 
 if __name__ == '__main__':
-    paths = glob(args.input_path + '*.png')
+    paths = glob(args.input_path + '*.jpg')
 
     transform = transforms.Compose([
         transforms.Resize((args.input_size,)*2),
