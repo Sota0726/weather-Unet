@@ -103,7 +103,7 @@ cols = ['clouds', 'temp', 'humidity', 'pressure', 'windspeed']
 df_ = df[df['mode'] == 'train'].loc[:, cols].fillna(0)
 df_mean = df_.mean()
 df_std = df_.std()
-df.loc[:, cols] = (df_ - df_mean) / df_std
+df.loc[:, cols] = (df.loc[:, cols] - df_mean) / df_std
 
 if args.mode == 'T':
     df_sep = {'train': df[df['mode'] == 'train'],
