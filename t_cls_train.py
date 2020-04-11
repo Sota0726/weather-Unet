@@ -3,16 +3,16 @@ import os
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--image_root', type=str,
-                    default="/mnt/HDD8T/takamuro/dataset/photos_usa_2016/"
-                    # default='/mnt/fs2/2018/matsuzaki/dataset_fromnitta/Image/'
+                    # default="/mnt/HDD8T/takamuro/dataset/photos_usa_2016/"
+                    default='/mnt/fs2/2018/matsuzaki/dataset_fromnitta/Image/'
                     )
 parser.add_argument('--name', type=str, default='cUNet')
 # Nmaing rule : cUNet_[c(classifier) or e(estimator)]_[detail of condition]_[epoch]_[step]
 parser.add_argument('--gpu', type=str, default='1')
 parser.add_argument('--save_dir', type=str, default='cp/transfer')
 parser.add_argument('--pkl_path', type=str,
-                    default='/mnt/fs2/2019/okada/from_nitta/parm_0.3/sep_for_T-train-50test-images.pkl'
-                    # default='/mnt/fs2/2019/Takamuro/db/i2w/sepalated_data.pkl'
+                    # default='/mnt/fs2/2019/okada/from_nitta/parm_0.3/sep_for_T-train-50test-images.pkl'
+                    default='/mnt/fs2/2019/Takamuro/db/i2w/sepalated_data.pkl'
                     )
 parser.add_argument('--estimator_path', type=str,
                     default='/mnt/fs2/2019/Takamuro/m2_research/weather_transfer/cp/classifier/i2w-classifier-res101-train-2020317/better_resnet101_epoch15_step59312.pt'
@@ -182,8 +182,8 @@ class WeatherTransfer(object):
         [i.cuda() for i in [self.inference, self.discriminator, self.estimator]]
 
         # Optimizer
-        self.g_opt = torch.optim.Adam(self.inference.parameters(), lr=args.lr, betas=(0.9, 0.999), weight_decay=args.lr/20)
-        self.d_opt = torch.optim.Adam(self.discriminator.parameters(), lr=args.lr, betas=(0.9, 0.999), weight_decay=args.lr/20)
+        self.g_opt = torch.optim.Adam(self.inference.parameters(), lr=args.lr, betas=(0.0, 0.999), weight_decay=args.lr/20)
+        self.d_opt = torch.optim.Adam(self.discriminator.parameters(), lr=args.lr, betas=(0.0, 0.999), weight_decay=args.lr/20)
 
         # これらのloaderにsamplerは必要ないのか？
         self.train_loader = torch.utils.data.DataLoader(
