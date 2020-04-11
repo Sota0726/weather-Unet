@@ -72,3 +72,12 @@ def get_sequential_labels(num_classes, batch_size, one_hot=False):
 
 def Variable_Float(x, batch_size):
     return Variable(torch.cuda.FloatTensor(batch_size, 1).fill_(x), requires_grad=False)
+
+
+def make_table_img(images, ref_images, results):
+    blank = torch.zeros_like(images[0]).unsqueeze(0)
+    ref_img = torch.cat([blank] + list(torch.split(ref_images, 1)), dim=3)
+    in_out_img = torch.cat([images] + results, dim=2)
+    # res_img = torch.cat([ref_img, in_out_img], dim=0)
+
+    return in_out_img

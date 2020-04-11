@@ -20,7 +20,7 @@ parser.add_argument('--estimator_path', type=str,
 parser.add_argument('--input_size', type=int, default=224)
 parser.add_argument('--lr', type=float, default=1e-4)
 parser.add_argument('--lmda', type=float, default=None)
-parser.add_argument('--num_epoch', type=int, default=100)
+parser.add_argument('--num_epoch', type=int, default=50)
 parser.add_argument('--batch_size', type=int, default=16)
 parser.add_argument('--num_workers', type=int, default=4)
 parser.add_argument('--image_only', action='store_true')
@@ -109,7 +109,7 @@ class WeatherTransfer(object):
         ])
 
         if args.dataset == 'i2w':
-            self.cols = ['clouds', 'temp', 'humidity', 'pressure', 'windspeed', 'rain']
+            self.cols = ['sunny', 'cloudy', 'rain', 'snow', 'foggy']
             self.num_classes = len(self.cols)
 
         elif args.dataset == 'flicker':

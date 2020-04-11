@@ -11,15 +11,15 @@ parser.add_argument('--name', type=str, default='cUNet')
 parser.add_argument('--gpu', type=str, default='1')
 parser.add_argument('--save_dir', type=str, default='cp/transfer')
 parser.add_argument('--pkl_path', type=str,
-                    default='/mnt/fs2/2019/okada/from_nitta/parm_0.3/sep_for_T-train-50test-images.pkl'
+                    default='/mnt/fs2/2019/okada/from_nitta/parm_0.3/sep_for_t-train-201059_test-45.pkl'
                     )
 parser.add_argument('--estimator_path', type=str,
-                    default='/mnt/fs2/2019/Takamuro/m2_research/weather_transfer/cp/estimator/est_res101_flicker-p03th1_sep-trian/better_est_resnet101_10_step12210.pt'
+                    default='/mnt/fs2/2019/Takamuro/m2_research/weather_transfer/cp/estimator/est_res101_flicker-p03th01-WoOutlier_sep-train_aug_pre_loss-mse-reduction-none-grad-all-1/est_resnet101_20_step22680.pt'
                     )
 parser.add_argument('--input_size', type=int, default=224)
 parser.add_argument('--lr', type=float, default=1e-4)
 parser.add_argument('--lmda', type=float, default=None)
-parser.add_argument('--num_epoch', type=int, default=100)
+parser.add_argument('--num_epoch', type=int, default=50)
 parser.add_argument('--batch_size', type=int, default=16)
 parser.add_argument('--num_workers', type=int, default=4)
 parser.add_argument('--GD_train_ratio', type=int, default=1)
@@ -101,7 +101,7 @@ class WeatherTransfer(object):
             transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
         ])
 
-        self.cols = ['sunny', 'cloudy', 'rain', 'snow', 'foggy']
+        self.cols = ['clouds', 'temp', 'humidity', 'pressure', 'windspeed']
         self.num_classes = len(self.cols)
 
         self.transform = {'train': train_transform, 'test': test_transform}
@@ -121,10 +121,18 @@ class WeatherTransfer(object):
 
         else:
             df = pd.read_pickle(args.pkl_path)
+
+            temp = pd.read_pickle('/mnt/fs2/2019/okada/from_nitta/parm_0.3/sepalated_data_wo-outlier.pkl')
+            df_ = temp.loc[:, self.cols].fillna(0)
+            df_mean = df_.mean()
+            df_std = df_.std()
+
+            df.loc[:, self.cols] = (df.loc[:, self.cols].fillna(0) - df_mean) / df_std
+
             print('loaded {} signals data'.format(len(df)))
             df_shuffle = df.sample(frac=1)
             df_sep = {'train': df_shuffle[df_shuffle['mode'] == 'train'], 'test': df_shuffle[df_shuffle['mode'] == 'test']}
-            del df, df_shuffle
+            del df, df_shuffle, temp
             loader = lambda s: FlickrDataLoader(args.image_root, df_sep[s], self.cols, transform=self.transform[s])
 
         train_set = loader('train')
@@ -225,14 +233,9 @@ class WeatherTransfer(object):
         g_loss_w = pred_loss(fake_c_out, r_labels)   # Weather prediction
 
         # abs_loss = torch.mean(torch.abs(fake_out - images), [1, 2, 3])
-        if args.supervised:
-            diff = torch.mean(torch.abs(fake_out - images), [1, 2, 3])
-            lmda = torch.mean(torch.abs(pred_labels - r_labels), 1)
-            loss_con = torch.mean(diff / (lmda + 1e-2))  # Reconstraction loss
-        else:
-            diff = torch.mean(torch.abs(fake_out - images), [1, 2, 3])
-            lmda = torch.mean(torch.abs(pred_labels - r_labels), 1)
-            loss_con = torch.mean(diff / (lmda + 1e-7))  # Reconstraction loss
+        diff = torch.mean(torch.abs(fake_out - images), [1, 2, 3])
+        lmda = torch.mean(torch.abs(pred_labels - r_labels), 1)
+        loss_con = torch.mean(diff / (lmda + 1e-7))  # Reconstraction loss
 
         lmda_con, lmda_w = (1, 1)
 
@@ -291,10 +294,6 @@ class WeatherTransfer(object):
         #     labels_ = self.estimator(images).detach()
         blank = torch.zeros_like(images[0]).unsqueeze(0)
         ref_images, ref_labels = self.test_random_sample[1]
-
-        if args.one_hot:
-            labels = F.one_hot(labels, self.num_classes).float()
-            ref_labels = F.one_hot(ref_labels, self.num_classes).float()
 
         for i in range(self.batch_size):
             with torch.no_grad():
