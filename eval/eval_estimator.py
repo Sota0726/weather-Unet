@@ -14,7 +14,8 @@ parser.add_argument('--pkl_path', type=str,
                     default='/mnt/fs2/2019/okada/from_nitta/parm_0.3/sepalated_data_wo-outlier.pkl')
 parser.add_argument('--image_root', type=str, default='/mnt/8THDD/takamuro/dataset/photos_usa_2016')
 parser.add_argument('--classifer_path', type=str,
-                    default='cp/estimator/single/est_res101_flicker-p03th01-WoOutlier_sep-train_aug_pre_loss-mse-reduction-none-grad-all-1/est_resnet101_50_step55080.pt')
+                    default='/mnt/fs2/2019/Takamuro/m2_research/weather_transfer/cp/estimator/'
+                    'est_res101_flicker-p03th01-WoOutlier_sep-train_aug_pre_loss-mse-reduction-none-grad-all-1/est_resnet101_20_step22680.pt')
 parser.add_argument('--input_size', type=int, default=224)
 parser.add_argument('--batch_size', type=int, default=16)
 parser.add_argument('--num_workers', type=int, default=4)
@@ -96,9 +97,9 @@ if __name__ == '__main__':
     df_std = df_.std()
     df = df_ori[df_ori['mode'] == 'test']
     df.loc[:, cols] = (df.loc[:, cols].fillna(0) - df_mean) / df_std
-    for col in cols:
-        tab_img = make_matricx_img(df, df[col].tolist(), col)
-        tab_img.save('gt_{}.jpg'.format(col))
+    # for col in cols:
+    #     tab_img = make_matricx_img(df, df[col].tolist(), col)
+    #     tab_img.save('gt_{}.jpg'.format(col))
 
     print('loaded {} data'.format(len(df)))
 
