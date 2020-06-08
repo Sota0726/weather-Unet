@@ -11,16 +11,17 @@ parser.add_argument('--name', type=str, default='cUNet')
 parser.add_argument('--gpu', type=str, default='1')
 parser.add_argument('--save_dir', type=str, default='cp/transfer')
 parser.add_argument('--pkl_path', type=str,
-                    default='/mnt/fs2/2019/okada/from_nitta/parm_0.3/sep_for_t-train-201059_test-45.pkl'
+                    default='/mnt/fs2/2019/okada/from_nitta/parm_0.3/for_transfer-est_training_train214938_test500.pkl'
                     )
 parser.add_argument('--estimator_path', type=str,
-                    default='/mnt/fs2/2019/Takamuro/m2_research/weather_transfer/cp/estimator/est_res101_flicker-p03th01-WoOutlier_sep-train_aug_pre_loss-mse-reduction-none-grad-all-1/est_resnet101_20_step22680.pt'
+                    default='/mnt/fs2/2019/Takamuro/m2_research/weather_transfer/cp/estimator/'
+                    'est_res101_flicker-p03th01-WoOutlier_sep-train_aug_pre_loss-mse-reduction-none-grad-all-1/est_resnet101_20_step22680.pt'
                     )
 parser.add_argument('--input_size', type=int, default=224)
 parser.add_argument('--lr', type=float, default=1e-4)
 parser.add_argument('--lmda', type=float, default=None)
 parser.add_argument('--num_epoch', type=int, default=50)
-parser.add_argument('--batch_size', type=int, default=16)
+parser.add_argument('--batch_size', type=int, default=8)
 parser.add_argument('--num_workers', type=int, default=4)
 parser.add_argument('--GD_train_ratio', type=int, default=1)
 parser.add_argument('--sampler', action='store_true')
@@ -168,8 +169,8 @@ class WeatherTransfer(object):
         [i.cuda() for i in [self.inference, self.discriminator, self.estimator]]
 
         # Optimizer
-        self.g_opt = torch.optim.Adam(self.inference.parameters(), lr=args.lr, betas=(0.9, 0.999), weight_decay=args.lr/20)
-        self.d_opt = torch.optim.Adam(self.discriminator.parameters(), lr=args.lr, betas=(0.9, 0.999), weight_decay=args.lr/20)
+        self.g_opt = torch.optim.Adam(self.inference.parameters(), lr=args.lr, betas=(0.0, 0.999), weight_decay=args.lr/20)
+        self.d_opt = torch.optim.Adam(self.discriminator.parameters(), lr=args.lr, betas=(0.0, 0.999), weight_decay=args.lr/20)
 
         # これらのloaderにsamplerは必要ないのか？
         self.train_loader = torch.utils.data.DataLoader(
