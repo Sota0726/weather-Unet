@@ -8,15 +8,15 @@ from tqdm import tqdm
 import pickle
 import matplotlib.pyplot as plt
 
+# Dataloder でPID kill error が出るときは画像を読み込めてない可能性が高いので，まずはパスをチェックする．
 parser = argparse.ArgumentParser()
-parser.add_argument('--gpu', type=str, default='1')
+parser.add_argument('--gpu', type=str, default='2')
 parser.add_argument('--pkl_path', type=str,
-                    default='/mnt/fs2/2019/okada/from_nitta/parm_0.3/sepalated_data.pkl')
-parser.add_argument('--image_root', type=str, default='/mnt/8THDD/takamuro/dataset/photos_usa_2016')
+                    default='/mnt/fs2/2019/okada/from_nitta/parm_0.3/sepalated_data_wo-outlier.pkl')
+parser.add_argument('--image_root', type=str, default='/mnt/HDD8T/takamuro/dataset/photos_usa_2016')
 parser.add_argument('--estimator_path', type=str,
                     default='/mnt/fs2/2019/Takamuro/m2_research/weather_transfer/cp/estimator/'
-                    # 'est_res101_flicker-p03th01-WoOutlier_sep-train_aug_pre_loss-mse-reduction-none-grad-all-1/est_resnet101_20_step22680.pt'
-                    'matsuzaki/resnet50_10.pt'
+                    'est_res101_flicker-p03th01-WoOutlier_sep-train_aug_pre_loss-mse-reduction-none-grad-all-1/est_resnet101_20_step22680.pt'
                     )
 parser.add_argument('--input_size', type=int, default=224)
 parser.add_argument('--batch_size', type=int, default=16)

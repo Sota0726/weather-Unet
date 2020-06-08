@@ -8,9 +8,9 @@ from tensorboard.backend.event_processing.event_accumulator import EventAccumula
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--output_dir', type=str, default='/mnt/fs2/2019/Takamuro/m2_research/weather_transfer/results/c_UNet/')
+parser.add_argument('--output_dir', type=str, default='/mnt/fs2/2019/Takamuro/m2_research/weather_transfer/results/c_UNet/tensorboard')
 parser.add_argument('--log_path', type=str,
-                    default='runs/Mar25_11-08-40_DLBOX2_lr-0.0001_bs-16_ne-50_name-cUNet_w-c-res101-0317_img-i2w_train-D1T1_aug_supervised_shuffle_adam-b1-09_wloss_CrossEnt'
+                    default='runs/Apr11_20-10-29_DLBOX2_lr-0.0001_bs-16_ne-50_name-cUNet_w-e-res101-0408_train-D1T1_adam-b1-09_wloss-mse_train200k-test500'
                     )
 args = parser.parse_args()
 
