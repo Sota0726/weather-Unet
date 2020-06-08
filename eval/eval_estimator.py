@@ -30,6 +30,7 @@ os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
 import torch
 import torchvision.transforms as transforms
 import torch.nn.functional as F
+from PIL import Image
 
 sys.path.append(os.getcwd())
 from dataset import FlickrDataLoader
@@ -41,26 +42,27 @@ def make_matricx_img(df, pred, col):
     temp = pred
     # print(temp.shape)
     print('{} gt range is {} ~ {}'.format(col, min(df[col]), max(df[col])))
+    print()
+    print('not stdrange is {} ~ {}'.format(np.min(temp) * df_std + df_mean, np.max(temp) * df_std + df_mean))
     print('range is {} ~ {}'.format(np.min(temp), np.max(temp)))
     bins = np.linspace(np.min(temp), np.max(temp), 11)
     print('bins is')
     print(bins)
 
-    from PIL import Image
-    img_size = 64
-    bin_num = 10
-    img_num = 24
-    dst = Image.new('RGB', (img_size*bin_num, img_size*img_num))
-    for i in range(bin_num):
-        temp_df2 = temp_df[(temp_df.clouds>=bins[i])&(temp_df.clouds<bins[i+1])]
-        sample_num = min(img_num, len(temp_df2))
-        photo_id = temp_df2.sample(n=sample_num)['photo'].tolist()
-        # print(photo_id)
-        for j, p in enumerate(photo_id):
-            im = Image.open(dir_name+p+".jpg")
-            im_resize = im.resize((img_size,img_size))
-            dst.paste(im_resize, (i*img_size, j*img_size))
-
+    # img_size = 64
+    # bin_num = 10
+    # img_num = 24
+    # dst = Image.new('RGB', (img_size*bin_num, img_size*img_num))
+    # for i in range(bin_num):
+    #     temp_df2 = temp_df[(temp_df.clouds>=bins[i])&(temp_df.clouds<bins[i+1])]
+    #     sample_num = min(img_num, len(temp_df2))
+    #     photo_id = temp_df2.sample(n=sample_num)['photo'].tolist()
+    #     # print(photo_id)
+    #     for j, p in enumerate(photo_id):
+    #         im = Image.open(dir_name+p+".jpg")
+    #         im_resize = im.resize((img_size,img_size))
+    #         dst.paste(im_resize, (i*img_size, j*img_size))
+    dst = 0
     return dst
 
 
@@ -69,6 +71,7 @@ def plot_hist(col, df, l1, pred):
 
         plt.figure()
         plt.hist(gt)
+        plt.title(col)
         plt.savefig(os.path.join(save_path, '{}_gt_hist.jpg'.format(col)))
 
         plt.figure()
@@ -81,27 +84,26 @@ def plot_hist(col, df, l1, pred):
 
 
 if __name__ == '__main__':
-    df_ori = pd.read_pickle(args.pkl_path)
-    # df = df[:len(df)//2]  # test data
-    # df_li = [df[df.condition2 == c _li[i]].sort_values('ent_label')[:100] for i in range(5)]
-    # df = pd.concat(df_li)
+
     save_path = os.path.join('/mnt/fs2/2019/Takamuro/m2_research/weather_transfer/results/eval_estimator',
                              args.estimator_path.split('/')[-2],
-                             'e' + args.estimator_path.split('/')[-1].split('_')[-2], 'temp')
+                             'e' + args.estimator_path.split('/')[-1].split('_')[-2])
     os.makedirs(save_path, exist_ok=True)
 
+    df_ori = pd.read_pickle(args.pkl_path)
     df = df_ori[df_ori['mode'] == 'train']
     cols = ['clouds', 'temp', 'humidity', 'pressure', 'windspeed']
-    # cols = ['temp']
 
     df_ = df.loc[:, cols].fillna(0)
     df_mean = df_.mean()
     df_std = df_.std()
     df = df_ori[df_ori['mode'] == 'test']
     df.loc[:, cols] = (df.loc[:, cols].fillna(0) - df_mean) / df_std
-    # for col in cols:
-    #     tab_img = make_matricx_img(df, df[col].tolist(), col)
-    #     tab_img.save('gt_{}.jpg'.format(col))
+    del df_ori
+
+    for col in cols:
+        tab_img = make_matricx_img(df, df[col].tolist(), col)
+        # tab_img.save('gt_{}.jpg'.format(col))
 
     print('loaded {} data'.format(len(df)))
 
@@ -128,11 +130,9 @@ if __name__ == '__main__':
 
     bs = args.batch_size
 
-    av_l1_li = np.empty((0, len(cols)))
     l1_li = np.empty((0, len(cols)))
     pred_li = np.empty((0, len(cols)))
     mse_li = np.empty((0, len(cols)))
-    av_mse_li = np.empty((0, len(cols)))
 
     # vec_li = []
     for i, data in tqdm(enumerate(loader), total=len(df) // bs):
@@ -143,39 +143,36 @@ if __name__ == '__main__':
         # l1_ = F.l1_loss(pred, signals)
         mse = F.mse_loss(pred, signals, reduction='none')
         # l1 = torch.mean(torch.abs(pred - signals), dim=0)
-        l1 = torch.abs(pred - signals)
-
+        # l1 = torch.abs(pred - signals)
+        l1 = pred - signals
         if len(cols) == 1:
             pred_li = np.append(pred_li, pred.cpu().numpy().reshape(bs, -1))
             l1_li = np.append(l1_li, l1.cpu().numpy().reshape(bs, -1))
             mse_li = np.append(mse_li, mse.cpu().numpy().reshape(bs, -1))
-            av_l1_li = np.append(av_l1_li, torch.mean(l1).cpu().numpy().reshape(1, -1))
-            av_mse_li = np.append(av_mse_li, torch.mean(mse).cpu().numpy().reshape(1, -1))
         else:
             pred_li = np.append(pred_li, pred.cpu().numpy().reshape(bs, -1), axis=0)
             l1_li = np.append(l1_li, l1.cpu().numpy().reshape(bs, -1), axis=0)
             mse_li = np.append(mse_li, mse.cpu().numpy().reshape(bs, -1), axis=0)
-            av_l1_li = np.append(av_l1_li, torch.mean(l1, dim=0).cpu().numpy().reshape(1, -1), axis=0)
-            av_mse_li = np.append(av_mse_li, torch.mean(mse, dim=0).cpu().numpy().reshape(1, -1), axis=0)
 
-    ave_l1 = np.mean(av_l1_li, axis=0)
-    ave_mse = np.mean(av_mse_li, axis=0)
-    with open(os.path.join(save_path, 'l1.pkl'), 'wb') as f:
-        pickle.dump(l1_li, f)
-    with open(os.path.join(save_path, 'pred.pkl'), 'wb') as f:
-        pickle.dump(pred_li, f)
-    with open(os.path.join(save_path, 'mse.pkl'), 'wb') as f:
-        pickle.dump(mse_li, f)
+    ave_l1 = np.mean(l1_li, axis=0)
+    std_l1 = np.std(l1_li, axis=0)
+    ave_mse = np.mean(mse_li, axis=0)
+    # with open(os.path.join(save_path, 'l1.pkl'), 'wb') as f:
+    #     pickle.dump(l1_li, f)
+    # with open(os.path.join(save_path, 'pred.pkl'), 'wb') as f:
+    #     pickle.dump(pred_li, f)
+    # with open(os.path.join(save_path, 'mse.pkl'), 'wb') as f:
+    #     pickle.dump(mse_li, f)
     # with open('.pkl', 'wb') as f:
     #     pickle.dump(df, f)
 
     print(cols)
     print('l1')
     print(ave_l1)
-    print(ave_l1 * df_std)
+    print((ave_l1 * df_std))
     print('l1 std')
-    print(np.std(l1_li, axis=0))
-    print(np.std(l1_li, axis=0) * df_std)
+    print(std_l1)
+    print((std_l1 * df_std))
     print('mse')
     print(ave_mse)
 
@@ -187,5 +184,5 @@ if __name__ == '__main__':
     else:
         for i, col in enumerate(cols):
             tab_img = make_matricx_img(df, pred_li[:, i], col)
-            tab_img.save(os.path.join(save_path, 'est_{}.jpg'.format(col)))
+            # tab_img.save(os.path.join(save_path, 'est_{}.jpg'.format(col)))
             plot_hist(col, df, l1_li[:, i], pred_li[:, i])
