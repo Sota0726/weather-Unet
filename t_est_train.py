@@ -3,7 +3,7 @@ import os
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--image_root', type=str,
-                    default="/mnt/HDD8T/takamuro/dataset/photos_usa_2016/"
+                    default="/mnt/fs2/2019/Takamuro/db/photos_usa_2016/"
                     # default='/mnt/fs2/2018/matsuzaki/dataset_fromnitta/Image/'
                     )
 parser.add_argument('--name', type=str, default='cUNet')

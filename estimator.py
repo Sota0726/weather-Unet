@@ -53,17 +53,21 @@ writer = SummaryWriter(comment=comment)
 save_dir = os.path.join(args.save_path, args.name)
 os.makedirs(save_dir, exist_ok=True)
 
+augmentations = [transforms.RandomRotation(10),
+                # transforms.RandomResizedCrop(args.input_size),
+                transforms.RandomHorizontalFlip(),
+                transforms.RandomVerticalFlip(),
+                transforms.ColorJitter(
+                    brightness=0.5,
+                    contrast=0.3,
+                    saturation=0.3,
+                    hue=0
+                )]
+
 if args.augmentation:
     train_transform = transforms.Compose([
-        transforms.RandomRotation(10),
-        transforms.RandomResizedCrop(args.input_size),
-        transforms.RandomHorizontalFlip(),
-        transforms.ColorJitter(
-                brightness=0.5,
-                contrast=0.3,
-                saturation=0.3,
-                hue=0
-            ),
+        transforms.Resize((args.input_size,)*2),
+        transforms.RandomApply(augmentations, p=0.7),
         transforms.ToTensor(),
         transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
     ])

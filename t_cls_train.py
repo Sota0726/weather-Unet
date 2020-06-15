@@ -136,6 +136,7 @@ class WeatherTransfer(object):
             loader = lambda s: FlickrDataLoader(args.image_root, df_sep[s], self.cols, transform=self.transform[s], class_id=False, imbalance=args.sampler)
 
         elif image_only:
+            print('image loader')
             paths = glob(os.path.join(args.image_root, '*'))
             print('loaded {} data'.format(len(paths)))
             pivot = int(len(paths) * train_data_rate)
@@ -180,8 +181,8 @@ class WeatherTransfer(object):
         [i.cuda() for i in [self.inference, self.discriminator, self.estimator]]
 
         # Optimizer
-        self.g_opt = torch.optim.Adam(self.inference.parameters(), lr=args.lr, betas=(0.9, 0.999), weight_decay=args.lr/20)
-        self.d_opt = torch.optim.Adam(self.discriminator.parameters(), lr=args.lr, betas=(0.9, 0.999), weight_decay=args.lr/20)
+        self.g_opt = torch.optim.Adam(self.inference.parameters(), lr=args.lr, betas=(0.0, 0.999), weight_decay=args.lr/20)
+        self.d_opt = torch.optim.Adam(self.discriminator.parameters(), lr=args.lr, betas=(0.0, 0.999), weight_decay=args.lr/20)
 
         # これらのloaderにsamplerは必要ないのか？
         self.train_loader = torch.utils.data.DataLoader(
@@ -238,7 +239,6 @@ class WeatherTransfer(object):
         # real_res = self.discriminator(images, pred_labels)
         # real_d_out = real_res[0]
         # real_feat = real_res[3]
-
         fake_out = self.inference(images, r_labels)
         fake_res = self.discriminator(fake_out, r_labels)
         fake_d_out = fake_res[0]
@@ -334,7 +334,7 @@ class WeatherTransfer(object):
                     ref_labels = self.estimator(ref_images)
                 ref_labels_expand = torch.cat([ref_labels[i]] * self.batch_size).view(-1, self.num_classes)
                 fake_out_ = self.inference(images, ref_labels_expand)
-                fake_c_out_ = self.estimator(fake_out_)
+                fake_c_out_ = self.estimator_(fake_out_)
                 # fake_d_out_ = self.discriminator(fake_out_, labels)[0]  # Dへの入力はfake_out_ と re_labels_expandではないのか？
                 real_d_out_ = self.discriminator(images, labels)[0]
                 fake_d_out_ = self.discriminator(fake_out_, ref_labels_expand)[0]
@@ -344,6 +344,7 @@ class WeatherTransfer(object):
             # loss_con_ = torch.mean(diff / (lmda + 1e-7))
 
             fake_out_li.append(fake_out_)
+            # g_loss_adv_.append(adv_loss(fake_d_out_, self.real).item())
             g_loss_adv_.append(gen_hinge(fake_d_out_).item())
             g_loss_l1_.append(l1_loss(fake_out_, images).item())
             g_loss_w_.append(pred_loss(fake_c_out_, ref_labels_expand).item())
@@ -402,7 +403,7 @@ class WeatherTransfer(object):
                             'epoch': self.epoch,
                             'global_step': self.global_step
                             }
-                    torch.save(state_dict, out_path)
+                    # torch.save(state_dict, out_path)
 
                 tqdm_iter.set_description('Training [ {} step ]'.format(self.global_step))
                 if args.lmda:
@@ -412,6 +413,9 @@ class WeatherTransfer(object):
 
                 images, c_d = (d.to('cuda') for d in data)
                 rand_images, c_r = (d.to('cuda') for d in rand_data)
+
+                if images.size(0) != self.batch_size:
+                    continue
 
                 if args.supervised:
                     rand_labels = torch.eye(5)[c_r].to('cuda')  # one_hot, c_r = [0~4]

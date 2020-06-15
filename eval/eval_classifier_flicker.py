@@ -12,20 +12,18 @@ from sklearn.metrics import classification_report, confusion_matrix
 import seaborn as sns
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--gpu', type=int, default=1)
+parser.add_argument('--gpu', type=int, default=2)
 parser.add_argument('--image_root', type=str,
                     default='/mnt/fs2/2019/takamuro/db/photos_usa_2016/')
 parser.add_argument('--pkl_path', type=str,
-                    default='/mnt/fs2/2019/okada/'
-                            'b4_sys/search_parm_new2/parm_0.3/'
-                            'sepalated_data.pkl')
+                    default='/mnt/fs2/2019/okada/from_nitta/parm_0.3/sepalated_data.pkl')
 parser.add_argument('--output_dir', type=str,
-                    default='/mnt/fs2/2019/takamuro/results/c-UNet/'
-                            'eval_classifier_flicker/flicker_param-03_th-1_res101_val_imb')
+                    default='/mnt/fs2/2019/Takamuro/m2_research/results/'
+                            'eval_classifier_flicker/flicker_param-03_th-1')
 # imb mean imbalanced
 parser.add_argument('--classifer_path', type=str,
                     default='/mnt/data2/takamuro/m2/cUNet-Pytorch/cp/'
-                            'classifier/resnet101_15.pt')
+                            'classifier/res101_flicker_p-03_th-1/resnet101_epoch15_step71072.pt')
 # parser.add_argument('--classifer_path', type=str, default='cp/classifier/res_aug_5_cls/resnet101_95.pt')
 parser.add_argument('--input_size', type=int, default=224)
 parser.add_argument('--batch_size', type=int, default=16)
@@ -52,8 +50,8 @@ from cunet import Conditional_UNet
 if __name__ == '__main__':
     os.makedirs(args.output_dir, exist_ok=True)
     df = pd.read_pickle(args.pkl_path)
-    sep_data = df[df['mode'] == 'train']
-    print('{} data were loaded'.format(len(df)))
+    sep_data = df[df['mode'] == 'test']
+    print('{} data were loaded'.format(len(sep_data)))
 
     transform = transforms.Compose([
         transforms.Resize((args.input_size,)*2),
@@ -81,7 +79,6 @@ if __name__ == '__main__':
 
     bs = args.batch_size
     cls_li = ['Clear', 'Clouds', 'Rain', 'Snow', 'Mist']
-    s_li = ['sunny', 'cloudy', 'rain', 'snow', 'foggy']
 
     res_li = []
     for i, data in tqdm(enumerate(loader)):

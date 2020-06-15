@@ -46,6 +46,7 @@ sys.path.append(os.getcwd())
 from dataset import ClassImageLoader
 from sampler import ImbalancedDatasetSampler
 from cunet import Conditional_UNet
+from disc import SNDisc
 
 if __name__ == '__main__':
     transform = transforms.Compose([
@@ -77,11 +78,19 @@ if __name__ == '__main__':
             )
 
     # load model
-    transfer = Conditional_UNet(num_classes=args.num_classes)
+    # transfer = Conditional_UNet(num_classes=args.num_classes)
+    dis = SNDisc(num_classes=args.num_classes)
     sd = torch.load(args.cp_path)
+    dis.load_state_dict(sd['discriminator'])
+
+    transfer = Conditional_UNet(num_classes=args.num_classes)
     transfer.load_state_dict(sd['inference'])
 
     classifer = torch.load(args.classifer_path)
+    classifer = nn.Sequential(
+                        classifer,
+                        nn.Softmax(dim=1)
+                    )
     classifer.eval()
 
     transfer.cuda()
