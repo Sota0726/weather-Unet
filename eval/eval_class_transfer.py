@@ -110,7 +110,7 @@ if __name__ == '__main__':
 
                 cls_li.append(torch.cat([r_cls.int().cpu().view(r_cls.size(0), -1),
                               c_preds.int().cpu().view(c_preds.size(0), -1)], 1))
-
+    
                 # cls_li.append(torch.cat([r_cls.int().cpu().view(r_cls.size(0), -1),
                 #                 c_preds.int().cpu().view(c_preds.size(0), -1)], 1))
 

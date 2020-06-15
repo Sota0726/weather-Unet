@@ -3,16 +3,16 @@ import os
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--image_root', type=str,
-                    # default="/mnt/HDD8T/takamuro/dataset/photos_usa_2016/"
-                    default='/mnt/fs2/2018/matsuzaki/dataset_fromnitta/Image/'
+                    default="/mnt/HDD8T/takamuro/dataset/photos_usa_2016/"
+                    # default='/mnt/fs2/2018/matsuzaki/dataset_fromnitta/Image/'
                     )
 parser.add_argument('--name', type=str, default='cUNet')
 # Nmaing rule : cUNet_[c(classifier) or e(estimator)]_[detail of condition]_[epoch]_[step]
 parser.add_argument('--gpu', type=str, default='1')
 parser.add_argument('--save_dir', type=str, default='cp/transfer')
 parser.add_argument('--pkl_path', type=str,
-                    # default='/mnt/fs2/2019/okada/from_nitta/parm_0.3/sep_for_T-train-50test-images.pkl'
-                    default='/mnt/fs2/2019/Takamuro/db/i2w/sepalated_data.pkl'
+                    default='/mnt/fs2/2019/okada/from_nitta/parm_0.3/sep_for_t-train-201059_test-45.pkl'
+                    # default='/mnt/fs2/2019/Takamuro/db/i2w/sepalated_data.pkl'
                     )
 parser.add_argument('--estimator_path', type=str,
                     default='/mnt/fs2/2019/Takamuro/m2_research/weather_transfer/cp/classifier/i2w-classifier-res101-train-2020317/better_resnet101_epoch15_step59312.pt'
@@ -25,7 +25,6 @@ parser.add_argument('--batch_size', type=int, default=16)
 parser.add_argument('--num_workers', type=int, default=4)
 parser.add_argument('--image_only', action='store_true')
 parser.add_argument('--one_hot', action='store_true')
-parser.add_argument('--w_clas_d_fli', action='store_true')
 parser.add_argument('--GD_train_ratio', type=int, default=1)
 parser.add_argument('--sampler', action='store_true')
 parser.add_argument('--supervised', action='store_true')

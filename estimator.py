@@ -19,12 +19,14 @@ parser.add_argument('--lr', type=float, default=1e-4)
 parser.add_argument('--wd', type=float, default=1e-5)
 parser.add_argument('--num_epoch', type=int, default=100)
 parser.add_argument('--batch_size', '-bs', type=int, default=64)
-parser.add_argument('--num_workers', type=int, default=64)
+parser.add_argument('--num_workers', type=int, default=4)
 parser.add_argument('--mode', type=str, default='T', help='T(Train data) or E(Evaluate data)')
 parser.add_argument('--multi', action='store_true')
 parser.add_argument('--augmentation', action='store_true')
 parser.add_argument('--pre_trained', action='store_true')
-args = parser.parse_args()
+args = parser.parse_args(args=['--gpu', '3', '--augmentation', '--pre_trained',  
+                               '--name', 'est_res101_flicker_p3th01_WoOutlier_sep-train_aug_pre_loss-mse'])
+#  args = parser.parse_args()
 
 os.environ['CUDA_DEVICE_ORDER'] = "PCI_BUS_ID"
 os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
@@ -117,8 +119,7 @@ else:
 del df, df_
 print('{} train data were loaded'.format(len(df_sep['train'])))
 
-loader = lambda s: FlickrDataLoader(args.image_root, df_sep[s],
-                                    cols, transform[s])
+loader = lambda s: FlickrDataLoader(args.image_root, df_sep[s], cols, transform[s])
 
 train_set = loader('train')
 test_set = loader('test')
@@ -159,7 +160,8 @@ if args.multi:
 # train setting
 opt = torch.optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.wd)
 
-criterion = nn.MSELoss(reduction='none')
+criterion = nn.MSELoss()
+# criterion = nn.MSELoss(reduction='none')
 # criterion = nn.L1Loss(reduction='none')
 
 eval_per_iter = 100
@@ -181,9 +183,10 @@ for epoch in tqdm_iter:
         opt.zero_grad()
         outputs = model(inputs)
         loss = criterion(outputs, labels)
-        loss = torch.mean(loss, dim=0)
-        gradients = torch.FloatTensor([1.0, 1.0, 1.0, 1.0, 1.0]).to('cuda')
-        loss.backward(gradients)
+        # loss = torch.mean(loss, dim=0)
+        # gradients = torch.FloatTensor([1.0, 1.0, 1.0, 1.0, 1.0]).to('cuda')
+        # loss.backward(gradients)
+        loss.backward()
         opt.step()
 
         # diff_l1 = l1_loss(outputs.detach(), labels)
