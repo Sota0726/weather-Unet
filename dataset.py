@@ -40,7 +40,7 @@ class FlickrDataLoader(Dataset):
         else:
             self.labels = df['condition2']
         # self.cls_li = sorted(self.labels.unique())
-        self.cls_li = ['Clear', 'Clouds', 'Rain', 'Snow', 'Mist']
+        self.cls_li = ['Clear', 'Clouds', 'Rain', 'Mist', 'Snow']
         self.num_classes = len(columns)
         self.transform = transform
         del df  # , df_
@@ -70,13 +70,13 @@ class FlickrDataLoader(Dataset):
         label = self.get_condition(idx)
 
         if self.class_id is None:
-            return image, label
+            return image, label #, self.photo_id[idx]
         elif self.class_id:
             cls_id = self.get_class(idx)
-            return image, cls_id, label
+            return image, label, cls_id, self.photo_id[idx]
         else:
             cls_id = self.get_class(idx)
-            return image, cls_id  # , idx
+            return image, cls_id # , self.photo_id[idx] + '.jpg'
 
 class ImageLoader(Dataset):
     def __init__(self, paths, transform=None):

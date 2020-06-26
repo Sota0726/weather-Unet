@@ -20,13 +20,18 @@ parser.add_argument('--input_size', type=int, default=224)
 parser.add_argument('--lr', type=float, default=1e-4)
 parser.add_argument('--lmda', type=float, default=None)
 parser.add_argument('--num_epoch', type=int, default=50)
-parser.add_argument('--batch_size', type=int, default=16)
+parser.add_argument('--batch_size', '-bs', type=int, default=16)
 parser.add_argument('--num_workers', type=int, default=4)
 parser.add_argument('--GD_train_ratio', type=int, default=1)
 parser.add_argument('--sampler', action='store_true')
 parser.add_argument('--augmentation', action='store_true')
 parser.add_argument('--image_only', action='store_true')
 args = parser.parse_args()
+# args = parser.parse_args(args=['--gpu', '2',
+#                                '--name', 'debug',
+#                                '--augmentation',
+#                                '--estimator_path', './cp/estimator/single/est_res101_flicker-p03th01_Wo-Outlier-Gray_sep-train_pre_aug-p07_loss-mse/est_resnet101_30_step33170.pt']
+#                                )
 
 # GPU Setting
 os.environ['CUDA_DEVICE_ORDER'] = "PCI_BUS_ID"
@@ -52,7 +57,7 @@ from dataset import ImageLoader, FlickrDataLoader, ClassImageLoader
 from sampler import ImbalancedDatasetSampler
 from cunet import Conditional_UNet
 from disc import SNDisc
-from utils import MakeOneHot
+from utils import MakeOneHot, Denormalize
 
 
 class WeatherTransfer(object):
@@ -72,17 +77,29 @@ class WeatherTransfer(object):
         self.fake = Variable_Float(0., self.batch_size)
         self.lmda = 0.
 
+        augmentations = [transforms.RandomResizedCrop(args.input_size),
+                         transforms.RandomRotation(15),
+                         transforms.RandomHorizontalFlip(),
+                         transforms.ColorJitter(
+                            brightness=0.5,
+                            contrast=0.3,
+                            saturation=0.3,
+                            hue=0
+                            ),
+                         ]
+
+        self.g_transform = transforms.Compose([
+            Denormalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]),
+            transforms.ToPILImage(mode="RGB"),
+            transforms.RandomApply(augmentations, p=0.7),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
+        ])
+
         if args.augmentation:
             train_transform = transforms.Compose([
-                transforms.RandomRotation(10),
-                transforms.RandomResizedCrop(args.input_size),
-                transforms.RandomHorizontalFlip(),
-                transforms.ColorJitter(
-                        brightness=0.5,
-                        contrast=0.3,
-                        saturation=0.3,
-                        hue=0
-                    ),
+                transforms.Resize((args.input_size,)*2),
+                transforms.RandomApply(augmentations, p=0.7),
                 transforms.ToTensor(),
                 transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
             ])
@@ -214,16 +231,13 @@ class WeatherTransfer(object):
         # --- UPDATE(Inference) --- #
         self.g_opt.zero_grad()
 
-        # for real
         pred_labels = self.estimator(images).detach()
-        # real_res = self.discriminator(images, pred_labels)
-
-        # real_d_out = real_res[0]
-        # real_feat = real_res[3]
 
         fake_out = self.inference(images, r_labels)
+        fake_out_aug = torch.stack([self.g_transform(_.cpu()) for _ in fake_out.detach()], dim=0).to('cuda')
+
         fake_c_out = self.estimator(fake_out)
-        fake_res = self.discriminator(fake_out, r_labels)
+        fake_res = self.discriminator(fake_out_aug, r_labels)
         fake_d_out = fake_res[0]
         # fake_feat = fake_res[3]
 
@@ -270,7 +284,9 @@ class WeatherTransfer(object):
 
         # for fake
         fake_out = self.inference(images, labels)
-        fake_d_out = self.discriminator(fake_out.detach(), labels)[0]
+        fake_out_aug = torch.stack([self.g_transform(_.cpu()) for _ in fake_out.detach()], dim=0).to('cuda')
+
+        fake_d_out = self.discriminator(fake_out_aug, labels)[0]
 
         d_loss = dis_hinge(fake_d_out, real_d_out_pred)
 
