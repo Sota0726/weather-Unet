@@ -15,7 +15,7 @@ parser.add_argument('--gpu', type=str, default='3')
 parser.add_argument('--image_root', type=str,
                     default="/mnt/HDD8T/takamuro/dataset/photos_usa_2016/")
 parser.add_argument('--pkl_path', type=str,
-                    default='/mnt/fs2/2019/okada/from_nitta/parm_0.3/12test_for_paper_fig.pkl')
+                    default='/mnt/fs2/2019/okada/from_nitta/parm_0.3/sepalated_data_wo-outlier.pkl')
 parser.add_argument('--output_dir', '-o', type=str,
                     default='/mnt/fs2/2019/Takamuro/m2_research/weather_transfer/results/eval_est_transfer/'
                     'cUNet_w-e_res101-0408_train-D1T1_adam_b1-00_aug_wloss-mse_train200k-test500/e23_322k')
@@ -45,6 +45,7 @@ from torch.utils.data import Dataset
 sys.path.append(os.getcwd())
 from dataset import ImageLoader, FlickrDataLoader
 from cunet import Conditional_UNet
+from sampler import ImbalancedDatasetSampler
 from ops import make_table_img
 
 
@@ -86,9 +87,11 @@ if __name__ == '__main__':
             )
     random_loader = torch.utils.data.DataLoader(
             dataset,
+            sampler=ImbalancedDatasetSampler(dataset),
             batch_size=args.batch_size,
             num_workers=args.num_workers,
             drop_last=True
+            # shuffle=True
             )
 
     # load model
@@ -138,13 +141,14 @@ if __name__ == '__main__':
                 # [save_image(output, os.path.join(args.output_dir,
                 #  '{}_{}'.format('rand', photos[j]), normalize=True)
                 #  for j, output in enumerate(out_)]
-            out_li.append(out)
-        ref_img = torch.cat([blank] + list(torch.split(r_batch, 1)), dim=3)
-        in_out_img = torch.cat([batch] + out_li, dim=3)
-        res_img = torch.cat([ref_img, in_out_img], dim=0)
-        save_image(ref_img, os.path.join(args.output_dir, '0ref.jpg'), normalize=True)
-        [save_image(out, os.path.join(args.output_dir, '{}_in_out.jpg'.format(i)), normalize=True) for i, out in enumerate(in_out_img)]
-        save_image(res_img, os.path.join(args.output_dir, '0summury.jpg'), normalize=True)
+        #     out_li.append(out)
+        # ref_img = torch.cat([blank] + list(torch.split(r_batch, 1)), dim=3)
+        # in_out_img = torch.cat([batch] + out_li, dim=3)
+        # res_img = torch.cat([ref_img, in_out_img], dim=0)
+        # save_image(ref_img, os.path.join(args.output_dir, '0ref.jpg'), normalize=True)
+        # [save_image(out, os.path.join(args.output_dir, '{}_in_out.jpg'.format(i)), normalize=True) for i, out in enumerate(in_out_img)]
+        # save_image(res_img, os.path.join(args.output_dir, '0summury.jpg'), normalize=True)
+
         # res = make_table_img(batch, r_batch, out_li)
         # save_image(res, os.path.join(args.output_dir, 'summary_results_{}.jpg'.format(str(k))), normalize=True)
 
