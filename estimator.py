@@ -24,9 +24,9 @@ parser.add_argument('--mode', type=str, default='T', help='T(Train data) or E(Ev
 parser.add_argument('--multi', action='store_true')
 parser.add_argument('--augmentation', action='store_true')
 parser.add_argument('--pre_trained', action='store_true')
-args = parser.parse_args(args=['--gpu', '3', '--augmentation', '--pre_trained',  
-                               '--name', 'est_res101_flicker_p3th01_WoOutlier_sep-train_aug_pre_loss-mse'])
-#  args = parser.parse_args()
+# args = parser.parse_args(args=['--gpu', '3', '--augmentation', '--pre_trained',
+#                                '--name', 'est_effi-net_flicker_p3th01_WoOutlier_sep-train_aug_pre-b0_loss-mse'])
+args = parser.parse_args()
 
 os.environ['CUDA_DEVICE_ORDER'] = "PCI_BUS_ID"
 os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
@@ -43,6 +43,9 @@ from dataset import FlickrDataLoader
 from sampler import ImbalancedDatasetSampler
 from ops import soft_transform, l1_loss, adv_loss
 
+from efficientnet_pytorch import EfficientNet
+
+
 comment = '_lr-{}_bs-{}_ne-{}_x{}_name-{}'.format(args.lr,
                                                   args.batch_size,
                                                   args.num_epoch,
@@ -52,22 +55,17 @@ writer = SummaryWriter(comment=comment)
 
 save_dir = os.path.join(args.save_path, args.name)
 os.makedirs(save_dir, exist_ok=True)
-
-augmentations = [transforms.RandomRotation(10),
-                # transforms.RandomResizedCrop(args.input_size),
-                transforms.RandomHorizontalFlip(),
-                transforms.RandomVerticalFlip(),
-                transforms.ColorJitter(
-                    brightness=0.5,
-                    contrast=0.3,
-                    saturation=0.3,
-                    hue=0
-                )]
-
 if args.augmentation:
     train_transform = transforms.Compose([
-        transforms.Resize((args.input_size,)*2),
-        transforms.RandomApply(augmentations, p=0.7),
+        transforms.RandomRotation(10),
+        transforms.RandomResizedCrop(args.input_size),
+        transforms.RandomHorizontalFlip(),
+        transforms.ColorJitter(
+                brightness=0.5,
+                contrast=0.3,
+                saturation=0.3,
+                hue=0
+            ),
         transforms.ToTensor(),
         transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
     ])
@@ -145,19 +143,20 @@ test_loader = torch.utils.data.DataLoader(
 num_classes = train_set.num_classes
 
 if not args.pre_trained:
-    model = models.resnet101(pretrained=False, num_classes=num_classes)
+    # model = models.resnet101(pretrained=False, num_classes=num_classes)
+    model = EfficientNet.from_name("efficientnet-b4")
+    num_features = model._fc.in_features
+    model._fc = nn.Linear(num_features, num_classes)
 else:
-    model = models.resnet101(pretrained=True)
-    ct = 0
-    for child in model.children():
-        ct += 1
-        if ct < 8:
-            for param in child.parameters():
-                param.requires_grad = False
-    num_features = model.fc.in_features
-    model.fc = nn.Linear(num_features, num_classes)
+    # model = models.resnet101(pretrained=True)
+    model = EfficientNet.from_pretrained('efficientnet-b4', num_classes=num_classes)
+    # ct = 0
+    for param in model.parameters():
+        param.requires_grad = False
+    model._fc.requires_grad = True
 
 model.cuda()
+model.train()
 if args.multi:
     model = nn.DataParallel(model)
 
@@ -190,10 +189,10 @@ for epoch in tqdm_iter:
         # loss = torch.mean(loss, dim=0)
         # gradients = torch.FloatTensor([1.0, 1.0, 1.0, 1.0, 1.0]).to('cuda')
         # loss.backward(gradients)
+        loss = torch.autograd.Variable(loss, requires_grad=True)
         loss.backward()
         opt.step()
 
-        # diff_l1 = l1_loss(outputs.detach(), labels)
         diff_l1 = l1_loss(outputs.detach(), labels)
         diff_mse = adv_loss(outputs.detach(), labels)
 
