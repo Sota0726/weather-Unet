@@ -19,13 +19,11 @@ parser.add_argument('--lr', type=float, default=1e-4)
 parser.add_argument('--wd', type=float, default=1e-5)
 parser.add_argument('--num_epoch', type=int, default=100)
 parser.add_argument('--batch_size', '-bs', type=int, default=64)
-parser.add_argument('--num_workers', type=int, default=4)
+parser.add_argument('--num_workers', type=int, default=64)
 parser.add_argument('--mode', type=str, default='T', help='T(Train data) or E(Evaluate data)')
 parser.add_argument('--multi', action='store_true')
 parser.add_argument('--augmentation', action='store_true')
 parser.add_argument('--pre_trained', action='store_true')
-# args = parser.parse_args(args=['--gpu', '3', '--augmentation', '--pre_trained',
-#                                '--name', 'est_effi-net_flicker_p3th01_WoOutlier_sep-train_aug_pre-b0_loss-mse'])
 args = parser.parse_args()
 
 os.environ['CUDA_DEVICE_ORDER'] = "PCI_BUS_ID"
@@ -43,9 +41,6 @@ from dataset import FlickrDataLoader
 from sampler import ImbalancedDatasetSampler
 from ops import soft_transform, l1_loss, adv_loss
 
-from efficientnet_pytorch import EfficientNet
-
-
 comment = '_lr-{}_bs-{}_ne-{}_x{}_name-{}'.format(args.lr,
                                                   args.batch_size,
                                                   args.num_epoch,
@@ -55,6 +50,7 @@ writer = SummaryWriter(comment=comment)
 
 save_dir = os.path.join(args.save_path, args.name)
 os.makedirs(save_dir, exist_ok=True)
+
 if args.augmentation:
     train_transform = transforms.Compose([
         transforms.RandomRotation(10),
@@ -121,7 +117,8 @@ else:
 del df, df_
 print('{} train data were loaded'.format(len(df_sep['train'])))
 
-loader = lambda s: FlickrDataLoader(args.image_root, df_sep[s], cols, transform[s])
+loader = lambda s: FlickrDataLoader(args.image_root, df_sep[s],
+                                    cols, transform[s])
 
 train_set = loader('train')
 test_set = loader('test')
@@ -143,28 +140,26 @@ test_loader = torch.utils.data.DataLoader(
 num_classes = train_set.num_classes
 
 if not args.pre_trained:
-    # model = models.resnet101(pretrained=False, num_classes=num_classes)
-    model = EfficientNet.from_name("efficientnet-b4")
-    num_features = model._fc.in_features
-    model._fc = nn.Linear(num_features, num_classes)
+    model = models.resnet101(pretrained=False, num_classes=num_classes)
 else:
-    # model = models.resnet101(pretrained=True)
-    model = EfficientNet.from_pretrained('efficientnet-b4', num_classes=num_classes)
-    # ct = 0
-    for param in model.parameters():
-        param.requires_grad = False
-    model._fc.requires_grad = True
+    model = models.resnet101(pretrained=True)
+    ct = 0
+    for child in model.children():
+        ct += 1
+        if ct < 8:
+            for param in child.parameters():
+                param.requires_grad = False
+    num_features = model.fc.in_features
+    model.fc = nn.Linear(num_features, num_classes)
 
 model.cuda()
-model.train()
 if args.multi:
     model = nn.DataParallel(model)
 
 # train setting
 opt = torch.optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.wd)
 
-criterion = nn.MSELoss()
-# criterion = nn.MSELoss(reduction='none')
+criterion = nn.MSELoss(reduction='none')
 # criterion = nn.L1Loss(reduction='none')
 
 eval_per_iter = 100
@@ -186,13 +181,12 @@ for epoch in tqdm_iter:
         opt.zero_grad()
         outputs = model(inputs)
         loss = criterion(outputs, labels)
-        # loss = torch.mean(loss, dim=0)
-        # gradients = torch.FloatTensor([1.0, 1.0, 1.0, 1.0, 1.0]).to('cuda')
-        # loss.backward(gradients)
-        loss = torch.autograd.Variable(loss, requires_grad=True)
-        loss.backward()
+        loss = torch.mean(loss, dim=0)
+        gradients = torch.FloatTensor([1.0, 1.0, 1.0, 1.0, 1.0]).to('cuda')
+        loss.backward(gradients)
         opt.step()
 
+        # diff_l1 = l1_loss(outputs.detach(), labels)
         diff_l1 = l1_loss(outputs.detach(), labels)
         diff_mse = adv_loss(outputs.detach(), labels)
 
