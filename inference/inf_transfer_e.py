@@ -15,7 +15,7 @@ parser.add_argument('--gpu', type=str, default='3')
 parser.add_argument('--image_root', type=str,
                     default="/mnt/8THDD/takamuro/dataset/photos_usa_2016/")
 parser.add_argument('--pkl_path', type=str,
-                    default='/mnt/fs2/2019/okada/from_nitta/parm_0.3/sepalated_data_wo-outlier.pkl')
+                    default='/mnt/fs2/2019/Takamuro/m2_research/flicker_data/from_nitta/param03/50test_high-consis_from-10images-each-con2.pkl')
 parser.add_argument('--output_dir', '-o', type=str,
                     default='/mnt/fs2/2019/Takamuro/m2_research/weather_transfer/results/eval_est_transfer/'
                     'cUNet_w-e_res101-0408_train-D1T1_adam_b1-00_aug_wloss-mse_train200k-test500/e23_322k')
@@ -26,7 +26,7 @@ parser.add_argument('--classifer_path', type=str,
                     default='/mnt/fs2/2019/Takamuro/m2_research/weather_transfer/cp/estimator/'
                             'est_res101_flicker-p03th01-WoOutlier_sep-train_aug_pre_loss-mse-reduction-none-grad-all-1/est_resnet101_20_step22680.pt')
 parser.add_argument('--input_size', type=int, default=224)
-parser.add_argument('--batch_size', type=int, default=12)
+parser.add_argument('--batch_size', type=int, default=50)
 parser.add_argument('--num_workers', type=int, default=8)
 parser.add_argument('--image_only', action='store_true')
 args = parser.parse_args()
@@ -87,7 +87,7 @@ if __name__ == '__main__':
             )
     random_loader = torch.utils.data.DataLoader(
             dataset,
-            sampler=ImbalancedDatasetSampler(dataset),
+            # sampler=ImbalancedDatasetSampler(dataset),
             batch_size=args.batch_size,
             num_workers=args.num_workers,
             drop_last=True
@@ -133,13 +133,13 @@ if __name__ == '__main__':
         #         '{}_{}'.format('rand', photos[j])), normalize=True)
         #         for j, output in enumerate(out_)]
 
-        for i in range(bs):
+        for i in tqdm(range(bs)):
             with torch.no_grad():
                 ref_labels_expand = torch.cat([r_sig[i]] * bs).view(-1, len(cols))
                 out = transfer(batch, ref_labels_expand)
 
-                [save_image(output, os.path.join(save_path,
-                 '{}_t-{}_r-{}.jpg'.format('gt', b_photos[j], r_photos[i])), normalize=True)
+                [save_image(output, os.path.join(args.output_dir,
+                 '{}-{}_r-{}.jpg'.format('gt', b_photos[j], r_photos[i])), normalize=True)
                  for j, output in enumerate(out)]
                 # [save_image(output, os.path.join(args.output_dir,
                 #  '{}_{}'.format('rand', photos[j]), normalize=True)

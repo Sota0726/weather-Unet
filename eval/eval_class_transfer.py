@@ -23,7 +23,7 @@ parser.add_argument('--output_dir', '-o', type=str,
 parser.add_argument('--cp_path', type=str,
                     default='/mnt/fs2/2019/Takamuro/m2_research/weather_transfer/cp/transfer/'
                     'cUNet_w-c-res101-0317_img-i2w_train-D1T1_aug_supervised_shuffle_adam-b1-09_wloss_CrossEnt/cUNet_w-c-res101-0317_img-i2w_train-D1T1_aug_supervised_shuffle_adam-b1-09_wloss_CrossEnt_e0035_s132000.pt')
-                    # 'cUNet_w-c-res101-0317_img-flicker-200k_aug_shuffle_adam-b1-09_wloss-CrossEnt/cUNet_w-c-res101-0317_img-flicker-200k_aug_shuffle_adam-b1-09_wloss-CrossEnt_e0025_s324000.pt')
+                    #'cUNet_w-c-res101-0317_img-flicker-200k_aug_shuffle_adam-b1-09_wloss-CrossEnt/cUNet_w-c-res101-0317_img-flicker-200k_aug_shuffle_adam-b1-09_wloss-CrossEnt_e0025_s324000.pt')
 parser.add_argument('--classifer_path', type=str,
                     default='/mnt/fs2/2019/Takamuro/m2_research/weather_transfer/cp/classifier/cls_res101_i2w_sep-val_aug_20200408/resnet101_epoch20_step77847.pt')
 parser.add_argument('--input_size', type=int, default=224)
@@ -46,6 +46,7 @@ sys.path.append(os.getcwd())
 from dataset import ClassImageLoader
 from sampler import ImbalancedDatasetSampler
 from cunet import Conditional_UNet
+from disc import SNDisc
 
 if __name__ == '__main__':
     transform = transforms.Compose([
@@ -77,11 +78,19 @@ if __name__ == '__main__':
             )
 
     # load model
-    transfer = Conditional_UNet(num_classes=args.num_classes)
+    # transfer = Conditional_UNet(num_classes=args.num_classes)
+    dis = SNDisc(num_classes=args.num_classes)
     sd = torch.load(args.cp_path)
+    dis.load_state_dict(sd['discriminator'])
+
+    transfer = Conditional_UNet(num_classes=args.num_classes)
     transfer.load_state_dict(sd['inference'])
 
     classifer = torch.load(args.classifer_path)
+    classifer = nn.Sequential(
+                        classifer,
+                        nn.Softmax(dim=1)
+                    )
     classifer.eval()
 
     transfer.cuda()
@@ -110,7 +119,7 @@ if __name__ == '__main__':
 
                 cls_li.append(torch.cat([r_cls.int().cpu().view(r_cls.size(0), -1),
                               c_preds.int().cpu().view(c_preds.size(0), -1)], 1))
-
+    
                 # cls_li.append(torch.cat([r_cls.int().cpu().view(r_cls.size(0), -1),
                 #                 c_preds.int().cpu().view(c_preds.size(0), -1)], 1))
 
@@ -128,6 +137,7 @@ if __name__ == '__main__':
     df = pd.DataFrame(data=matrix, index=s_li, columns=s_li)
     df.to_pickle(os.path.join(output_path, 'cm.pkl'))
 
-    plot = sns.heatmap(df, square=True, annot=True, fmt='d')
+    sns.set(font_scale=1.5)
+    plot = sns.heatmap(df, square=True, annot=True, annot_kws={'size': 20}, fmt='d')
     fig = plot.get_figure()
     fig.savefig(os.path.join(output_path, 'pr_table_20200408.png'))
