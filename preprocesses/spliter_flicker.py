@@ -28,7 +28,7 @@ def split_flicker(df, ent_th):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--pickle_path', type=str, default='/mnt/fs2/2019/okada/b4_sys/search_parm_new2/parm_0.3/df_con.pkl')
+    parser.add_argument('--pickle_path', type=str, default='/mnt/fs2/2019/okada/from_nitta/parm_0.3/outdoor_all_dbdate_withweather_selected_ent.pkl')
     parser.add_argument('--out_path', type=str, default='sepalated_data.pkl')
     parser.add_argument('--ent_th', type=float, default=1.0, help='ent_label threshold')
     args = parser.parse_args()
