@@ -40,7 +40,7 @@ class FlickrDataLoader(Dataset):
         else:
             self.labels = df['condition2']
         # self.cls_li = sorted(self.labels.unique())
-        self.cls_li = ['Clear', 'Clouds', 'Rain', 'Snow', 'Mist']
+        self.cls_li = ['Clear', 'Clouds', 'Rain', 'Mist', 'Snow']
         self.num_classes = len(columns)
         self.transform = transform
         del df  # , df_
@@ -70,13 +70,13 @@ class FlickrDataLoader(Dataset):
         label = self.get_condition(idx)
 
         if self.class_id is None:
-            return image, label
+            return image, label, self.photo_id[idx]
         elif self.class_id:
             cls_id = self.get_class(idx)
-            return image, cls_id, label
+            return image, label, cls_id, self.photo_id[idx]
         else:
             cls_id = self.get_class(idx)
-            return image, cls_id  # , idx
+            return image, cls_id # , self.photo_id[idx] + '.jpg'
 
 class ImageLoader(Dataset):
     def __init__(self, paths, transform=None):
@@ -150,3 +150,54 @@ class ImageFolder(DatasetFolder):
         if self.transform:
             image = self.transform(image)
         return image, target
+
+
+class OneYearWeatherSignals(Dataset):
+    def __init__(self, image_root, df, columns, photo_id, transform=None, name=None):
+        super(OneYearWeatherSignals, self).__init__()
+        # init
+        self.root = image_root
+        self.columns = columns
+        self.photo_id = photo_id
+        self.transform = transform
+        
+        if name is not None:
+            self.name = name
+        else:
+            self.name = df[df['photo'] == self.photo_id]['name'].to_list()[0]
+
+        self.num_classes = len(columns)
+        self.conditions, self.s_times = self.get_oneyear_data(self.name, df)
+
+        del df
+
+        try:
+            self.image = Image.open(os.path.join(self.root, self.photo_id + '.jpg'))
+        except:
+            print('no photo id')
+            exit()
+        self.image = self.image.convert('RGB')
+        if self.transform:
+            self.image = self.transform(self.image)
+
+    def __len__(self):
+        return len(self.conditions)
+
+    def get_oneyear_data(self, name, df):
+        df = df[df['name'] == name].drop_duplicates(subset=['s_unixtime'])
+        df = df.sort_values('s_unixtime', ascending=False).reset_index()
+        s_times = df['s_unixtime']
+        df = df.loc[:, self.columns]
+
+        return df, s_times
+
+    def get_condition(self, idx):
+        c = self.conditions.iloc[idx].fillna(0).to_list()
+        c_tensor = torch.from_numpy(np.array(c)).float()
+        del c
+        return c_tensor
+
+    def __getitem__(self, idx):
+        sig = self.get_condition(idx)
+        s_time = self.s_times[idx]
+        return self.image, sig, s_time

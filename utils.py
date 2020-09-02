@@ -2,6 +2,7 @@ import os
 
 import torch
 import torch.nn as nn
+import torchvision.transforms.functional as F
 
 class ConditionalNorm(nn.Module):
     def __init__(self, in_channel, num_classes=5):
@@ -20,6 +21,7 @@ class ConditionalNorm(nn.Module):
         beta = beta.unsqueeze(2).unsqueeze(3)
         out = gamma * out + beta
         return out
+
 
 class AdaIN(nn.Module):
     def __init__(self, in_channel, num_classes, eps=1e-5):
@@ -48,6 +50,7 @@ class AdaIN(nn.Module):
                 * y_std.expand(size) + y_mean.expand(size)
         return out
 
+
 class BatchNorm(nn.Module):
     def __init__(self):
         super().__init__()
@@ -67,6 +70,7 @@ class BatchNorm(nn.Module):
         out = (x - x_mean.expand(size)) / x_std.expand(size)
         return out
 
+
 class MakeOneHot(nn.Module):
     def __init__(self, num_classes):
         super().__init__()
@@ -75,6 +79,7 @@ class MakeOneHot(nn.Module):
     def forward(self, x):
         ind = torch.argmax(x)
         return nn.functional.one_hot(ind, self.num_classes)
+
 
 class HalfDropout(nn.Module):
     def __init__(self, p=0.3):
@@ -88,3 +93,17 @@ class HalfDropout(nn.Module):
         b = x[:, ch//2:]
         out = torch.cat([a,b], dim=1)
         return out
+
+
+class Denormalize(object):
+    def __init__(self, mean, std, inplace=False):
+        self.mean = mean
+        self.demean = [-m/s for m, s in zip(mean, std)]
+        self.std = std
+        self.destd = [1/s for s in std]
+        self.inplace = inplace
+
+    def __call__(self, tensor):
+        tensor = F.normalize(tensor, self.demean, self.destd, self.inplace)
+        # clamp to get rid of numerical errors
+        return torch.clamp(tensor, 0.0, 1.0)

@@ -19,7 +19,7 @@ parser.add_argument('--lr', type=float, default=1e-4)
 parser.add_argument('--wd', type=float, default=1e-5)
 parser.add_argument('--num_epoch', type=int, default=100)
 parser.add_argument('--batch_size', '-bs', type=int, default=64)
-parser.add_argument('--num_workers', type=int, default=4)
+parser.add_argument('--num_workers', type=int, default=64)
 parser.add_argument('--mode', type=str, default='T', help='T(Train data) or E(Evaluate data)')
 parser.add_argument('--multi', action='store_true')
 parser.add_argument('--augmentation', action='store_true')
@@ -51,21 +51,17 @@ writer = SummaryWriter(comment=comment)
 save_dir = os.path.join(args.save_path, args.name)
 os.makedirs(save_dir, exist_ok=True)
 
-augmentations = [transforms.RandomRotation(10),
-                # transforms.RandomResizedCrop(args.input_size),
-                transforms.RandomHorizontalFlip(),
-                transforms.RandomVerticalFlip(),
-                transforms.ColorJitter(
-                    brightness=0.5,
-                    contrast=0.3,
-                    saturation=0.3,
-                    hue=0
-                )]
-
 if args.augmentation:
     train_transform = transforms.Compose([
-        transforms.Resize((args.input_size,)*2),
-        transforms.RandomApply(augmentations, p=0.7),
+        transforms.RandomRotation(10),
+        transforms.RandomResizedCrop(args.input_size),
+        transforms.RandomHorizontalFlip(),
+        transforms.ColorJitter(
+                brightness=0.5,
+                contrast=0.3,
+                saturation=0.3,
+                hue=0
+            ),
         transforms.ToTensor(),
         transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
     ])
