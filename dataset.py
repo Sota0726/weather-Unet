@@ -25,7 +25,7 @@ def get_class_id_from_string(string):
 
 
 class FlickrDataLoader(Dataset):
-    def __init__(self, image_root, df, columns, transform=None, class_id=None, imbalance=None):
+    def __init__(self, image_root, df, columns, transform=None, class_id=False, imbalance=None, inf=False):
         super(FlickrDataLoader, self).__init__()
         # init
         self.root = image_root
@@ -40,26 +40,29 @@ class FlickrDataLoader(Dataset):
         else:
             self.labels = df['condition2']
         # self.cls_li = sorted(self.labels.unique())
-        self.cls_li = ['Clear', 'Clouds', 'Rain', 'Mist', 'Snow']
+        self.cls_li = ['Clear', 'Clouds', 'Rain', 'Snow', 'Mist']
         self.num_classes = len(columns)
         self.transform = transform
         del df  # , df_
+        self.inf = inf
 
     def __len__(self):
         return len(self.photo_id)
 
     def get_class(self, idx):
-        string = self.labels.iloc[idx]
-        id = self.cls_li.index(string)
-        return id
+        w_cls = self.labels.iloc[idx]
+        cls_id = self.cls_li.index(w_cls)
+        return cls_id
 
-    def get_condition(self, idx):
-        c = self.conditions.iloc[idx].fillna(0).to_list()
-        c_tensor = torch.from_numpy(np.array(c)).float()
-        del c
-        return c_tensor
+    def get_signal(self, idx):
+        sig = self.conditions.iloc[idx].fillna(0).to_list()
+        sig_tensor = torch.from_numpy(np.array(sig)).float()
+        del sig
+        return sig_tensor
 
     def __getitem__(self, idx):
+
+        # --- GET IMAGE ---#
         try:
             image = Image.open(os.path.join(self.root, self.photo_id[idx] + '.jpg'))
         except:
@@ -67,16 +70,18 @@ class FlickrDataLoader(Dataset):
         image = image.convert('RGB')
         if self.transform:
             image = self.transform(image)
-        label = self.get_condition(idx)
 
-        if self.class_id is None:
-            return image, label, self.photo_id[idx]
-        elif self.class_id:
-            cls_id = self.get_class(idx)
-            return image, label, cls_id, self.photo_id[idx]
+        # --- GET LABEL ---#
+        if not self.class_id:
+            label = self.get_signal(idx)
         else:
-            cls_id = self.get_class(idx)
-            return image, cls_id # , self.photo_id[idx] + '.jpg'
+            label = self.get_class(idx)
+
+        if not self.inf:
+            return image, label
+        elif self.inf:
+            return image, label, self.photo_id[idx]
+
 
 class ImageLoader(Dataset):
     def __init__(self, paths, transform=None):
@@ -103,7 +108,7 @@ class ImageLoader(Dataset):
 
 
 class ClassImageLoader(Dataset):
-    def __init__(self, paths, transform=None, inf=None):
+    def __init__(self, paths, transform=None, inf=False):
         # without z-other
         paths = [p for p in paths if 'z-other' not in p]
         # count dirs on root
@@ -130,10 +135,11 @@ class ClassImageLoader(Dataset):
         target = self.get_class(idx)
         if self.transform:
             image = self.transform(image)
-        if self.inf:
-            return image, target, self.paths[idx]
-        else:
+
+        if not self.inf:
             return image, target
+        elif self.inf:
+            return image, target, self.paths[idx]
 
 
 class ImageFolder(DatasetFolder):
