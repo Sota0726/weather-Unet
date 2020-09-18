@@ -3,7 +3,7 @@ import os
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--image_root', type=str,
-                    default="/mnt/8THDD/takamuro/dataset/photos_usa_2016/"
+                    default="/mnt/HDD8T/takamuro/dataset/photos_usa_2016/"
                     # default='/mnt/fs2/2018/matsuzaki/dataset_fromnitta/Image/'
                     )
 parser.add_argument('--name', type=str, default='cUNet')
@@ -20,14 +20,15 @@ parser.add_argument('--estimator_path', type=str,
 parser.add_argument('--input_size', type=int, default=224)
 parser.add_argument('--lr', type=float, default=1e-4)
 parser.add_argument('--lmda', type=float, default=None)
-parser.add_argument('--num_epoch', type=int, default=50)
-parser.add_argument('--batch_size', type=int, default=8)
-parser.add_argument('--num_workers', type=int, default=4)
+parser.add_argument('--num_epoch', type=int, default=35)
+parser.add_argument('--batch_size', type=int, default=16)
+parser.add_argument('--num_workers', type=int, default=8)
 parser.add_argument('--GD_train_ratio', type=int, default=1)
 parser.add_argument('--sampler', action='store_true')
 parser.add_argument('--augmentation', action='store_true')
 parser.add_argument('--image_only', action='store_true')
 args = parser.parse_args()
+# args = parser.parse_args(args=['--augmentation', '--name', 'debug'])
 
 # GPU Setting
 os.environ['CUDA_DEVICE_ORDER'] = "PCI_BUS_ID"
@@ -64,8 +65,9 @@ class WeatherTransfer(object):
         self.batch_size = args.batch_size
         self.global_step = 0
 
-        os.makedirs(os.path.join(args.save_dir, args.name), exist_ok=True)
-        comment = '_lr-{}_bs-{}_ne-{}_name-{}'.format(args.lr, args.batch_size, args.num_epoch, args.name)
+        self.name = '{}_aug-{}_sampler-{}_dataset-{}'.format(args.name, args.augmentation, args.sampler, args.pkl_path.split('/')[-1].split('.')[0])
+        os.makedirs(os.path.join(args.save_dir, self.name), exist_ok=True)
+        comment = '_lr-{}_bs-{}_ne-{}_name-{}'.format(args.lr, args.batch_size, args.num_epoch, self.name)
         self.writer = SummaryWriter(comment=comment)
 
         # Consts
@@ -122,14 +124,14 @@ class WeatherTransfer(object):
 
         else:
             df = pd.read_pickle(args.pkl_path)
-
+            # --- normalize --- #
             temp = pd.read_pickle('/mnt/fs2/2019/okada/from_nitta/parm_0.3/sepalated_data_wo-outlier.pkl')
             df_ = temp.loc[:, self.cols].fillna(0)
             df_mean = df_.mean()
             df_std = df_.std()
 
             df.loc[:, self.cols] = (df.loc[:, self.cols].fillna(0) - df_mean) / df_std
-
+            # ------------------ #
             print('loaded {} signals data'.format(len(df)))
             df_shuffle = df.sample(frac=1)
             df_sep = {'train': df_shuffle[df_shuffle['mode'] == 'train'], 'test': df_shuffle[df_shuffle['mode'] == 'test']}
@@ -148,7 +150,7 @@ class WeatherTransfer(object):
         print('Build Models...')
         self.inference = Conditional_UNet(num_classes=self.num_classes)
         self.discriminator = SNDisc(num_classes=self.num_classes)
-        exist_cp = sorted(glob(os.path.join(args.save_dir, args.name, '*')))
+        exist_cp = sorted(glob(os.path.join(args.save_dir, self.name, '*')))
         if len(exist_cp) != 0:
             print('Load checkpoint:{}'.format(exist_cp[-1]))
             sd = torch.load(exist_cp[-1])
@@ -166,7 +168,7 @@ class WeatherTransfer(object):
         self.estimator.eval()
 
         # Models to CUDA
-        [i.cuda() for i in [self.inference, self.discriminator, self.estimator]]
+        [i.to('cuda') for i in [self.inference, self.discriminator, self.estimator]]
 
         # Optimizer
         self.g_opt = torch.optim.Adam(self.inference.parameters(), lr=args.lr, betas=(0.0, 0.999), weight_decay=args.lr/20)
@@ -217,10 +219,6 @@ class WeatherTransfer(object):
 
         # for real
         pred_labels = self.estimator(images).detach()
-        # real_res = self.discriminator(images, pred_labels)
-
-        # real_d_out = real_res[0]
-        # real_feat = real_res[3]
 
         fake_out = self.inference(images, r_labels)
         fake_c_out = self.estimator(fake_out)
@@ -363,7 +361,7 @@ class WeatherTransfer(object):
                 self.global_step += 1
 
                 if self.global_step % eval_per_step == 0:
-                    out_path = os.path.join(args.save_dir, args.name, (args.name + '_e{:04d}_s{}.pt').format(self.epoch, self.global_step))
+                    out_path = os.path.join(args.save_dir, self.name, (self.name + '_e{:04d}_s{}.pt').format(self.epoch, self.global_step))
                     state_dict = {
                             'inference': self.inference.state_dict(),
                             'discriminator': self.discriminator.state_dict(),
@@ -378,17 +376,22 @@ class WeatherTransfer(object):
                 else:
                     self.lmda = self.global_step / self.all_step
 
-                images, d_ = (d.to('cuda') for d in data)
-                rand_images, r_ = (d.to('cuda') for d in rand_data)
+                images, con = (d.to('cuda') for d in data)
+                rand_images, r_con = (d.to('cuda') for d in rand_data)
 
-                rand_labels = self.estimator(rand_images).detach()
+                # --- master --- #
+                # rand_signals = self.estimator(rand_images).detach()
+                # -------------- #
+                # --- expt 4 --- #
+                rand_signals = r_con
+                # -------------- #
 
                 if images.size(0) != self.batch_size:
                     continue
 
-                self.update_discriminator(images, rand_labels)
+                self.update_discriminator(images, rand_signals)
                 if self.global_step % args.GD_train_ratio == 0:
-                    self.update_inference(images, rand_labels)
+                    self.update_inference(images, rand_signals)
 
                 # --- EVALUATION ---#
                 if (self.global_step % eval_per_step == 0) and not args.image_only:
