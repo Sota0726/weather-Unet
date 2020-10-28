@@ -12,23 +12,25 @@ from tqdm import tqdm
 parser = argparse.ArgumentParser()
 parser.add_argument('--gpu', type=int, default=2)
 parser.add_argument('--image_root', type=str,
-                    # default='/mnt/fs2/2019/takamuro/db/photos_usa_2016/')
-                    default='/mnt/fs2/2019/Takamuro/m2_research/weather_transfer/results/c_UNet/inf/cUNet_w-c-i2w-res101_img-i2w-train_sampler_D1T1_supervised_wloss-crossent_e0000_s1000/i2w')
+                    default='/mnt/fs2/2019/takamuro/db/photos_usa_2016/')
+                    # default='/mnt/fs2/2019/Takamuro/m2_research/weather_transfer/results/c_UNet/inf/cUNet_w-c-i2w-res101_img-i2w-train_sampler_D1T1_supervised_wloss-crossent_e0000_s1000/i2w')
 parser.add_argument('--pkl_path', type=str,
-                    default='/mnt/fs2/2019/okada/from_nitta/parm_0.3/sepalated_data.pkl')
+                    default='/mnt/fs2/2019/Takamuro/m2_research/flicker_data/from_nitta/param03/outdoor_all_dbdate_withweather_selected_ent_withowner.pkl')
 parser.add_argument('--output_dir', type=str,
-                    default='/mnt/fs2/2019/okada/from_nitta/parm_0.3/')
+                    default='/mnt/fs2/2019/Takamuro/m2_research/flicker_data/from_nitta/param03/')
 # imb mean imbalanced
 parser.add_argument('--classifer_path', type=str,
-                    default='/mnt/fs2/2019/Takamuro/m2_research/weather_transfer/cp/classifier_i2w_for_train_strict_sep/better_resnet101_10.pt')
+                    default='/mnt/fs2/2019/Takamuro/m2_research/weather_transfer/cp/classifier/i2w_classifier-res101-train-2020317/better_resnet101_epoch15_step59312.pt')
 # parser.add_argument('--classifer_path', type=str, default='cp/classifier/res_aug_5_cls/resnet101_95.pt')
 parser.add_argument('--input_size', type=int, default=224)
-parser.add_argument('--batch_size', type=int, default=10)
+parser.add_argument('--batch_size', type=int, default=23)
 parser.add_argument('--num_workers', type=int, default=4)
 parser.add_argument('--num_classes', type=int, default=5)
 parser.add_argument('--image_only', action='store_true')
-parser.add_argument('--image_i2w', action='store_true')
+parser.add_argument('--dataset', type=str, default='flicker')
 args = parser.parse_args()
+
+os.environ['CUDA_DEVICE_ORDER'] = "PCI_BUS_ID"
 os.environ['CUDA_VISIBLE_DEVICES'] = str(args.gpu)
 
 import torch
@@ -51,7 +53,7 @@ if __name__ == '__main__':
     classifer.eval()
 
     if args.gpu > 0:
-        classifer.cuda()
+        classifer.to('cuda')
 
     transform = transforms.Compose([
             transforms.Resize((args.input_size,)*2),
@@ -65,23 +67,25 @@ if __name__ == '__main__':
         print('loaded {} data'.format(len(paths)))
 
         df = pd.DataFrame.from_dict({'paths': [path.split('/')[-1] for path in paths]})
-        df['w_condition'] = None
+        df['pred_condition'] = None
         dataset = ImageLoader(paths=paths, transform=transform)
-    elif args.image_i2w:
+
+    if args.dataset == 'i2w':
         cls_li = ['sunny', 'cloudy', 'rain', 'snow', 'foggy']
         df = pd.read_pickle(args.pkl_path)
         df = df['test']
         print('loaded {} data'.format(len(df)))
 
-        df['w_condition'] = None
+        df['pred_condition'] = None
         dataset = ClassImageLoader(paths=df, transform=transform)
-    else:
+    elif args.dataset == 'flicker':
         df = pd.read_pickle(args.pkl_path)
+        df = df[df['mode'] == 'train']
         cols = ['clouds', 'temp', 'humidity', 'pressure', 'windspeed', 'rain']
         print('loaded {} data'.format(len(df)))
 
-        df['w_condition'] = None
-        dataset = FlickrDataLoader(args.image_root, df, cols, transform, class_id=False)
+        df['pred_condition'] = None
+        dataset = FlickrDataLoader(args.image_root, df, cols, transform, class_id=True)
 
     loader = torch.utils.data.DataLoader(
             dataset,
@@ -107,7 +111,9 @@ if __name__ == '__main__':
         res_li.append(pred.int().cpu().view(bs, -1))
     all_res = torch.cat(res_li, 0).numpy()
     for i, res in enumerate(all_res):
-        df.iat[i, df.columns.get_loc('w_condition')] = cls_li[res[0]]
-    print(df)
+        df.iat[i, df.columns.get_loc('pred_condition')] = cls_li[res[0]]
+    print(df.info())
+    print(df['condition2'].value_counts())
+    print(df['pred_condition'].value_counts())
     # df.to_pickle(os.path.join(args.output_dir, 'sep_with_est-label.pkl'))
     df.to_pickle(os.path.join(args.output_dir, 'check_result.pkl'))

@@ -20,8 +20,8 @@ parser.add_argument('--estimator_path', type=str,
 parser.add_argument('--input_size', type=int, default=224)
 parser.add_argument('--lr', type=float, default=1e-4)
 parser.add_argument('--lmda', type=float, default=None)
-parser.add_argument('--num_epoch', type=int, default=50)
-parser.add_argument('--batch_size', type=int, default=32)
+parser.add_argument('--num_epoch', type=int, default=35)
+parser.add_argument('--batch_size', type=int, default=16)
 parser.add_argument('--num_workers', type=int, default=4)
 parser.add_argument('--image_only', action='store_true')
 parser.add_argument('--GD_train_ratio', type=int, default=1)
@@ -29,6 +29,7 @@ parser.add_argument('--sampler', action='store_true')
 parser.add_argument('--supervised', action='store_true')
 parser.add_argument('--augmentation', action='store_true')
 parser.add_argument('--dataset', type=str, default='i2w')  # i2w or flicker
+parser.add_argument('--loss_lamda_cw', '-lm', type=float, nargs=2, default=[1, 1])
 
 args = parser.parse_args()
 
@@ -68,9 +69,10 @@ class WeatherTransfer(object):
         self.batch_size = args.batch_size
         self.global_step = 0
 
-        self.name = '{}_supervised-{}_aug-{}_sampler-{}_dataset-{}'.format(args.name, args.supervised, args.augmentation, args.sampler, args.dataset)
+        self.name = '{}_supervised-{}_aug-{}_sampler-{}_dataset-{}_loss_lamda-c{}-w{}'.format(self.args.name, self.args.supervised,
+                    self.args.augmentation, self.args.sampler, self.args.dataset, self.args.loss_lamda_cw[0], self.args.loss_lamda_cw[1])
         os.makedirs(os.path.join(args.save_dir, self.name), exist_ok=True)
-        comment = '_lr-{}_bs-{}_ne-{}_name-{}'.format(args.lr, args.batch_size, args.num_epoch, args.name)
+        comment = '_lr-{}_bs-{}_ne-{}_name-{}'.format(args.lr, args.batch_size, args.num_epoch, self.name)
         self.writer = SummaryWriter(comment=comment)
 
         # Consts
@@ -256,7 +258,7 @@ class WeatherTransfer(object):
         lmda = torch.mean(torch.abs(pred_labels - r_labels), 1)
         loss_con = torch.mean(diff / (lmda + ep))  # Reconstraction loss
 
-        lmda_con, lmda_w = (1, 1)
+        lmda_con, lmda_w = tuple(self.args.loss_lamda_cw)
 
         g_loss = g_loss_adv + lmda_con * loss_con + lmda_w * g_loss_w
 
@@ -269,7 +271,8 @@ class WeatherTransfer(object):
             'losses/g_loss_l1/train': g_loss_l1.item(),
             'losses/g_loss_w/train': g_loss_w.item(),
             'losses/loss_con/train': loss_con.item(),
-            'variables/lmda': self.lmda
+            'variables/lmda': self.lmda,
+            'variables/denominator_loss_con': torch.mean(lmda).item()
             })
 
         self.image_dict.update({
@@ -420,13 +423,16 @@ class WeatherTransfer(object):
                     rand_labels = torch.eye(5)[r_con].to('cuda')  # rand_labels:one_hot, r_con:label[0~4]
                     labels = torch.eye(5)[con].to('cuda')  # labels:one_hot, con:label[0~4]
                 else:
-                    rand_labels = self.estimator(rand_images).detach()
+                    # rand_labels = self.estimator(rand_images).detach()
                     # --- master --- #
                     # rand_labels = F.softmax(rand_labels, dim=1)
                     # -------------- #
                     # --- experiment1 --- #
                     # one-hot
-                    rand_labels = torch.eye(self.num_classes)[torch.argmax(rand_labels, dim=1)].to('cuda')
+                    # rand_labels = torch.eye(self.num_classes)[torch.argmax(rand_labels, dim=1)].to('cuda')
+                    # ------------------- #
+                    # --- experiment2 --- #
+                    rand_labels = torch.eye(5)[r_con].to('cuda')  # rand_labels:one_hot, r_con:label[0~4]
                     # ------------------- #
                     labels = torch.eye(5)[con].to('cuda')
 

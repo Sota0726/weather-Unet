@@ -32,6 +32,8 @@ parser.add_argument('--num_workers', type=int, default=8)
 parser.add_argument('--num_classes', type=int, default=5)
 
 args = parser.parse_args()
+
+os.environ['CUDA_DEVICE_ORDER'] = "PCI_BUS_ID"
 os.environ['CUDA_VISIBLE_DEVICES'] = str(args.gpu)
 
 import torch
@@ -85,6 +87,7 @@ if __name__ == '__main__':
 
     transfer = Conditional_UNet(num_classes=args.num_classes)
     transfer.load_state_dict(sd['inference'])
+    transfer.eval()
 
     classifer = torch.load(args.classifer_path)
     classifer = nn.Sequential(

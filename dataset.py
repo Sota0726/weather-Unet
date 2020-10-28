@@ -36,7 +36,12 @@ class FlickrDataLoader(Dataset):
         # self.conditions = (df_ - df_.mean()) / df_.std()
         self.conditions = df.loc[:, columns]
         if imbalance:
-            self.labels = df['w_condition']
+            # --- master --- #
+            # self.labels = df['w_condition']
+            # -------------- #
+            # --- experiment2 --- #
+            self.labels = df['condition2']
+            # ------------------- #
         else:
             self.labels = df['condition2']
         # self.cls_li = sorted(self.labels.unique())
