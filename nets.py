@@ -7,6 +7,7 @@ def upsample_box(out_channels):
         nn.BatchNorm2d(out_channels, affine=False)
     )
 
+
 def double_conv(in_channels, out_channels):
     return nn.Sequential(
         nn.Conv2d(in_channels, in_channels, 3, padding=1),
@@ -15,6 +16,7 @@ def double_conv(in_channels, out_channels):
         nn.LeakyReLU(0.2, inplace=True)
     )
 
+
 def r_double_conv(in_channels, out_channels):
     return nn.Sequential(
         nn.Conv2d(in_channels, out_channels, 3, padding=1),
@@ -22,7 +24,30 @@ def r_double_conv(in_channels, out_channels):
         nn.Conv2d(out_channels, out_channels, 3, padding=1),
         nn.ReLU(inplace=True)
     )
-    
+
+
+def BN_r_double_conv(in_channels, out_channels):
+    return nn.Sequential(
+        nn.Conv2d(in_channels, out_channels, 3, padding=1),
+        nn.BatchNorm2d(out_channels, affine=True),
+        nn.ReLU(inplace=True),
+        nn.Conv2d(out_channels, out_channels, 3, padding=1),
+        nn.BatchNorm2d(out_channels, affine=True),
+        nn.ReLU(inplace=True)
+    )
+
+
+def IN_r_double_conv(in_channels, out_channels):
+    return nn.Sequential(
+        nn.Conv2d(in_channels, out_channels, 3, padding=1),
+        nn.InstanceNorm2d(out_channels, affine=True),
+        nn.ReLU(inplace=True),
+        nn.Conv2d(out_channels, out_channels, 3, padding=1),
+        nn.InstanceNorm2d(out_channels, affine=True),
+        nn.ReLU(inplace=True)
+    )
+
+
 def sn_double_conv(in_channels, out_channels):
     return nn.Sequential(
         nn.utils.spectral_norm(
@@ -30,4 +55,4 @@ def sn_double_conv(in_channels, out_channels):
         nn.utils.spectral_norm(
             nn.Conv2d(in_channels, out_channels, 3, padding=1, stride=2)),
         nn.LeakyReLU(0.2, inplace=True)
-    )   
+    )
