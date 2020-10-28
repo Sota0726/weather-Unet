@@ -1,3 +1,5 @@
 cp/
 runs/
 temp-check_est
+__pycache__
+runs_comp
