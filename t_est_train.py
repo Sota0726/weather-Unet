@@ -30,6 +30,7 @@ parser.add_argument('--image_only', action='store_true')
 parser.add_argument('--resume_cp', type=str)
 parser.add_argument('-b1', '--adam_beta1', type=float, default=0.0)
 parser.add_argument('-b2', '--adam_beta2', type=float, default=0.999)
+parser.add_argument('--norm', type=str, default='IN', help='Insatance Norm(IN) or Batch Norm(BN)')
 args = parser.parse_args()
 # args = parser.parse_args(args=['--augmentation', '--name', 'debug', '--resume_cp', './cp/transfer/cUNet_w-e_res101_expt4_RandomSig-LowConf_aug-True_sampler-False_dataset-temp_WoGray_for_transfer-esttrain214938_test500/cUNet_w-e_res101_expt4_RandomSig-LowConf_aug-True_sampler-False_dataset-temp_WoGray_for_transfer-esttrain214938_test500_e0010_s138000.pt'])
 
@@ -55,7 +56,7 @@ from torchvision.utils import save_image, make_grid
 from ops import *
 from dataset import ImageLoader, FlickrDataLoader, ClassImageLoader
 from sampler import ImbalancedDatasetSampler
-from cunet import Conditional_UNet
+# from cunet import Conditional_UNet
 from disc import SNDisc
 from utils import MakeOneHot
 
@@ -68,8 +69,8 @@ class WeatherTransfer(object):
         self.batch_size = args.batch_size
         self.global_step = 0
 
-        self.name = '{}_aug-{}_sampler-{}_GDratio{}_adam-b1{}-b2{}_dataset-{}'.format(args.name, args.augmentation, args.sampler, '1-' + str(args.GD_train_ratio), 
-                                                                            args.adam_beta1, args.adam_beta2, args.pkl_path.split('/')[-1].split('.')[0])
+        self.name = '{}_aug-{}_sampler-{}_GDratio{}_adam-b1{}-b2{}_norm-{}_dataset-{}'.format(args.name, args.augmentation, args.sampler, '1-' + str(args.GD_train_ratio), 
+                                                                                        args.adam_beta1, args.adam_beta2, args.norm, args.pkl_path.split('/')[-1].split('.')[0])
         os.makedirs(os.path.join(args.save_dir, self.name), exist_ok=True)
         comment = '_lr-{}_bs-{}_ne-{}_name-{}'.format(args.lr, args.batch_size, args.num_epoch, self.name)
         self.writer = SummaryWriter(comment=comment)
@@ -152,6 +153,15 @@ class WeatherTransfer(object):
 
         # Models
         print('Build Models...')
+        if args.norm == 'IN':
+            from cunet_IN import Conditional_UNet
+        elif args.norm == 'BN':
+            from cunet_BN import Conditional_UNet
+        else:
+            print('invalid normalization method')
+            print('so import network without normalization')
+            from cunet import Conditional_UNet
+
         self.inference = Conditional_UNet(num_classes=self.num_classes)
         self.discriminator = SNDisc(num_classes=self.num_classes)
 
