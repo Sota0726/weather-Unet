@@ -8,10 +8,10 @@ parser.add_argument('--image_root', type=str,
                     )
 parser.add_argument('--name', type=str, default='cUNet')
 # Nmaing rule : cUNet_[c(classifier) or e(estimator)]_[detail of condition]_[epoch]_[step]
-parser.add_argument('--gpu', type=str, default='1')
+parser.add_argument('--gpu', type=str, default='0')
 parser.add_argument('--save_dir', type=str, default='cp/transfer')
 parser.add_argument('--pkl_path', type=str,
-                    default='/mnt/fs2/2019/Takamuro/m2_research/flicker_data/from_nitta/param03/temp_WoGray_for_transfer-esttrain214938_test500.pkl'
+                    default='/mnt/fs2/2019/Takamuro/m2_research/flicker_data/from_nitta/param03/temp_WoGray-LowConfOutlier_for_transfer-esttrain214938_test500.pkl'
                     )
 parser.add_argument('--estimator_path', type=str,
                     default='/mnt/fs2/2019/Takamuro/m2_research/weather_transfer/cp/estimator/'
@@ -27,8 +27,11 @@ parser.add_argument('--GD_train_ratio', type=int, default=1)
 parser.add_argument('--sampler', action='store_true')
 parser.add_argument('--augmentation', action='store_true')
 parser.add_argument('--image_only', action='store_true')
+parser.add_argument('--resume_cp', type=str)
+parser.add_argument('-b1', '--adam_beta1', type=float, default=0.0)
+parser.add_argument('-b2', '--adam_beta2', type=float, default=0.999)
 args = parser.parse_args()
-# args = parser.parse_args(args=['--augmentation', '--name', 'debug'])
+# args = parser.parse_args(args=['--augmentation', '--name', 'debug', '--resume_cp', './cp/transfer/cUNet_w-e_res101_expt4_RandomSig-LowConf_aug-True_sampler-False_dataset-temp_WoGray_for_transfer-esttrain214938_test500/cUNet_w-e_res101_expt4_RandomSig-LowConf_aug-True_sampler-False_dataset-temp_WoGray_for_transfer-esttrain214938_test500_e0010_s138000.pt'])
 
 # GPU Setting
 os.environ['CUDA_DEVICE_ORDER'] = "PCI_BUS_ID"
@@ -65,7 +68,8 @@ class WeatherTransfer(object):
         self.batch_size = args.batch_size
         self.global_step = 0
 
-        self.name = '{}_aug-{}_sampler-{}_dataset-{}'.format(args.name, args.augmentation, args.sampler, args.pkl_path.split('/')[-1].split('.')[0])
+        self.name = '{}_aug-{}_sampler-{}_GDratio{}_adam-b1{}-b2{}_dataset-{}'.format(args.name, args.augmentation, args.sampler, '1-' + str(args.GD_train_ratio), 
+                                                                            args.adam_beta1, args.adam_beta2, args.pkl_path.split('/')[-1].split('.')[0])
         os.makedirs(os.path.join(args.save_dir, self.name), exist_ok=True)
         comment = '_lr-{}_bs-{}_ne-{}_name-{}'.format(args.lr, args.batch_size, args.num_epoch, self.name)
         self.writer = SummaryWriter(comment=comment)
@@ -150,7 +154,11 @@ class WeatherTransfer(object):
         print('Build Models...')
         self.inference = Conditional_UNet(num_classes=self.num_classes)
         self.discriminator = SNDisc(num_classes=self.num_classes)
-        exist_cp = sorted(glob(os.path.join(args.save_dir, self.name, '*')))
+
+        if args.resume_cp:
+            exist_cp = [args.resume_cp]
+        else:
+            exist_cp = sorted(glob(os.path.join(args.save_dir, self.name, '*')))
         if len(exist_cp) != 0:
             print('Load checkpoint:{}'.format(exist_cp[-1]))
             sd = torch.load(exist_cp[-1])
@@ -171,8 +179,8 @@ class WeatherTransfer(object):
         [i.to('cuda') for i in [self.inference, self.discriminator, self.estimator]]
 
         # Optimizer
-        self.g_opt = torch.optim.Adam(self.inference.parameters(), lr=args.lr, betas=(0.0, 0.999), weight_decay=args.lr/20)
-        self.d_opt = torch.optim.Adam(self.discriminator.parameters(), lr=args.lr, betas=(0.0, 0.999), weight_decay=args.lr/20)
+        self.g_opt = torch.optim.Adam(self.inference.parameters(), lr=args.lr, betas=(args.adam_beta1, args.adam_beta2), weight_decay=args.lr/20)
+        self.d_opt = torch.optim.Adam(self.discriminator.parameters(), lr=args.lr, betas=(args.adam_beta1, args.adam_beta2), weight_decay=args.lr/20)
 
         # これらのloaderにsamplerは必要ないのか？
         self.train_loader = torch.utils.data.DataLoader(
