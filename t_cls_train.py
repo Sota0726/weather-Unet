@@ -290,7 +290,7 @@ class WeatherTransfer(object):
             # pred_labels = F.softmax(pred_labels, dim=1)
             # -------------- #
             # --- experiment1 --- #
-            # one-hot 
+            # one-hot
             pred_labels = torch.eye(self.num_classes)[torch.argmax(pred_labels, dim=1)].to('cuda')
             # ------------------- #
 
