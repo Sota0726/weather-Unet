@@ -11,7 +11,7 @@ parser.add_argument('--name', type=str, default='cUNet')
 parser.add_argument('--gpu', type=str, default='1')
 parser.add_argument('--save_dir', type=str, default='cp/transfer')
 parser.add_argument('--pkl_path', type=str,
-                    default='/mnt/fs2/2019/Takamuro/m2_research/flicker_data/from_nitta/param03/temp_WoGray_for_transfer-esttrain214938_test500.pkl'
+                    default='/mnt/fs2/2019/Takamuro/m2_research/flicker_data/from_nitta/param03/temp_WoGray-LowConfOutlier_for_transfer-esttrain214938_test500.pkl'
                     )
 parser.add_argument('--estimator_path', type=str,
                     default='/mnt/fs2/2019/Takamuro/m2_research/weather_transfer/cp/estimator/'
@@ -27,6 +27,7 @@ parser.add_argument('--GD_train_ratio', type=int, default=1)
 parser.add_argument('--sampler', action='store_true')
 parser.add_argument('--augmentation', action='store_true')
 parser.add_argument('--image_only', action='store_true')
+parser.add_argument('--norm', type=str, default='IN', help='Insatance Norm(IN) or Batch Norm(BN)')
 args = parser.parse_args()
 # args = parser.parse_args(args=['--augmentation', '--name', 'debug'])
 
@@ -52,7 +53,7 @@ from torchvision.utils import save_image, make_grid
 from ops import *
 from dataset import ImageLoader, FlickrDataLoader, ClassImageLoader
 from sampler import ImbalancedDatasetSampler
-from cunet import Conditional_UNet
+# from cunet import Conditional_UNet
 from disc import SNDisc
 from utils import MakeOneHot
 
@@ -65,7 +66,8 @@ class WeatherTransfer(object):
         self.batch_size = args.batch_size
         self.global_step = 0
 
-        self.name = '{}_aug-{}_sampler-{}_dataset-{}'.format(args.name, args.augmentation, args.sampler, args.pkl_path.split('/')[-1].split('.')[0])
+        self.name = '{}_aug-{}_sampler-{}_GDratio{}_norm-{}_dataset-{}'.format(args.name, args.augmentation, args.sampler, '1-' + str(args.GD_train_ratio), 
+                                                                                args.norm, args.pkl_path.split('/')[-1].split('.')[0])
         os.makedirs(os.path.join(args.save_dir, self.name), exist_ok=True)
         comment = '_lr-{}_bs-{}_ne-{}_name-{}'.format(args.lr, args.batch_size, args.num_epoch, self.name)
         self.writer = SummaryWriter(comment=comment)
@@ -148,6 +150,15 @@ class WeatherTransfer(object):
 
         # Models
         print('Build Models...')
+        if args.norm == 'IN':
+            from cunet_IN import Conditional_UNet
+        elif args.norm == 'BN':
+            from cunet_BN import Conditional_UNet
+        else:
+            print('invalid normalization method')
+            print('so import network without normalization')
+            from cunet import Conditional_UNet
+
         self.inference = Conditional_UNet(num_classes=self.num_classes)
         self.discriminator = SNDisc(num_classes=self.num_classes)
         exist_cp = sorted(glob(os.path.join(args.save_dir, self.name, '*')))
