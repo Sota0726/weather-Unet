@@ -30,7 +30,7 @@ parser.add_argument('--image_only', action='store_true')
 parser.add_argument('--resume_cp', type=str)
 parser.add_argument('-b1', '--adam_beta1', type=float, default=0.0)
 parser.add_argument('-b2', '--adam_beta2', type=float, default=0.999)
-parser.add_argument('--norm', type=str, default='IN', help='Insatance Norm(IN) or Batch Norm(BN)')
+parser.add_argument('--norm', type=str, default='WO', help='Insatance Norm(IN) or Batch Norm(BN)')
 args = parser.parse_args()
 # args = parser.parse_args(args=['--augmentation', '--name', 'debug', '--resume_cp', './cp/transfer/cUNet_w-e_res101_expt4_RandomSig-LowConf_aug-True_sampler-False_dataset-temp_WoGray_for_transfer-esttrain214938_test500/cUNet_w-e_res101_expt4_RandomSig-LowConf_aug-True_sampler-False_dataset-temp_WoGray_for_transfer-esttrain214938_test500_e0010_s138000.pt'])
 
@@ -57,7 +57,7 @@ from ops import *
 from dataset import ImageLoader, FlickrDataLoader, ClassImageLoader
 from sampler import ImbalancedDatasetSampler
 # from cunet import Conditional_UNet
-from disc import SNDisc
+from disc import SNResNetProjectionDiscriminator
 from utils import MakeOneHot
 
 
@@ -163,7 +163,7 @@ class WeatherTransfer(object):
             from cunet import Conditional_UNet
 
         self.inference = Conditional_UNet(num_classes=self.num_classes)
-        self.discriminator = SNDisc(num_classes=self.num_classes)
+        self.discriminator = SNResNetProjectionDiscriminator(num_classes=self.num_classes)
 
         if args.resume_cp:
             exist_cp = [args.resume_cp]
