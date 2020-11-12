@@ -11,7 +11,7 @@ parser.add_argument('--name', type=str, default='cUNet')
 parser.add_argument('--gpu', type=str, default='0')
 parser.add_argument('--save_dir', type=str, default='cp/transfer')
 parser.add_argument('--pkl_path', type=str,
-                    default='/mnt/fs2/2019/Takamuro/m2_research/flicker_data/from_nitta/param03/temp_WoGray-LowConfOutlier_for_transfer-esttrain214938_test500.pkl'
+                    default='/mnt/fs2/2019/Takamuro/m2_research/flicker_data/from_nitta/param03/temp_WoGray-LowConfOutlier-TestAndTrain_for_transfer-esttrain214938_test500.pkl'
                     )
 parser.add_argument('--estimator_path', type=str,
                     default='/mnt/fs2/2019/Takamuro/m2_research/weather_transfer/cp/estimator/'
@@ -20,7 +20,7 @@ parser.add_argument('--estimator_path', type=str,
 parser.add_argument('--input_size', type=int, default=224)
 parser.add_argument('--lr', type=float, default=1e-4)
 parser.add_argument('--lmda', type=float, default=None)
-parser.add_argument('--num_epoch', type=int, default=35)
+parser.add_argument('--num_epoch', type=int, default=150)
 parser.add_argument('--batch_size', type=int, default=16)
 parser.add_argument('--num_workers', type=int, default=8)
 parser.add_argument('--GD_train_ratio', type=int, default=1)
@@ -231,7 +231,7 @@ class WeatherTransfer(object):
         self.shift_lmda = lambda a, b: (1. - self.lmda) * a + self.lmda * b
         print('Build has been completed.')
 
-    def update_inference(self, images, r_labels):
+    def update_inference(self, images, r_labels, rand_images):
         # --- UPDATE(Inference) --- #
         self.g_opt.zero_grad()
 
@@ -271,7 +271,7 @@ class WeatherTransfer(object):
             })
 
         self.image_dict.update({
-            'io/train': torch.cat([images, fake_out], dim=3),
+            'io/train': torch.cat([images, fake_out, rand_images], dim=3),
             })
 
     def update_discriminator(self, images, labels):
@@ -409,7 +409,7 @@ class WeatherTransfer(object):
 
                 self.update_discriminator(images, rand_signals)
                 if self.global_step % args.GD_train_ratio == 0:
-                    self.update_inference(images, rand_signals)
+                    self.update_inference(images, rand_signals, rand_images)
 
                 # --- EVALUATION ---#
                 if (self.global_step % eval_per_step == 0) and not args.image_only:
